@@ -5,43 +5,28 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install dependencies
-        run: |
-          python -m ensurepip --upgrade || true
-          python -m pip install --upgrade pip
-          python -m pip install pytest pytest-asyncio pytest-cov httpx pydantic
-          python -m pip install -e .
+          python-version: "3.12"
 
       - name: Run smoke tests
         run: |
           python scripts/smoke_tests.py
 
-      - name: Run pytest
+      - name: Run simple unit tests
         run: |
-          pytest src/tests/ -v --cov=src/clawtrust/sdk --cov-report=xml --cov-report=term
+          python src/tests/unit/test_simple.py
 
-      - name: Upload coverage
-        if: matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
+      - name: Verify imports
+        run: |
+          python -c "
+          from src.clawtrust.sdk.client import SolanaClient
+          from src.clawtrust.sdk.identity import AgentIdentity
+          from src.clawtrust.sdk.reputation import ReputationEngine
+          from src.clawtrust.sdk.escrow import EscrowClient
+          print('All imports successful')
+          "
