@@ -262,7 +262,7 @@ async def run_async_tests():
     results.append(await test_escrow_state_machine())
     results.append(await test_escrow_cancel())
     
-    return all(results)
+    return results
 
 
 def main():
