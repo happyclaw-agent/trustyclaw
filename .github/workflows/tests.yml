@@ -3,35 +3,45 @@ name: Tests
 on: [push, pull_request]
 
 jobs:
-  smoke-test:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-asyncio pytest-cov httpx pydantic
+          python -m pip install -e .
 
       - name: Run smoke tests
         run: |
           python scripts/smoke_tests.py
 
-  # Full pytest tests (optional - can fail)
-  pytest:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install pytest
-        run: |
-          pip install pytest pytest-asyncio pytest-cov httpx pydantic || echo "Pytest install failed, skipping"
-
       - name: Run pytest
         run: |
-          pytest src/tests/ -v --cov=src/clawtrust/sdk || echo "Pytest failed, but smoke tests passed"
+          pytest src/tests/ -v --cov=src/clawtrust/sdk --cov-report=xml --cov-report=term
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
