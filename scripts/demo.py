@@ -9,8 +9,11 @@ This script demonstrates the complete ClawTrust flow:
 4. Funds released + Reputation updates
 5. Votes on other projects (for hackathon eligibility)
 
+For Moltbook integration, also see: scripts/moltbook_demo.py
+
 Usage:
     python scripts/demo.py --network devnet --verbose
+    python scripts/moltbook_demo.py --post --vote-count 10
 """
 
 import argparse
