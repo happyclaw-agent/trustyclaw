@@ -44,6 +44,24 @@ Recommendation: {rec}
 """.strip()
 
 
+# ============ Devnet Wallets ============
+
+WALLETS = {
+    "agent": {
+        "address": "GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q",
+        "name": "Happy Claw (Agent)",
+    },
+    "renter": {
+        "address": "3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN",
+        "name": "Renter Agent",
+    },
+    "provider": {
+        "address": "HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B",
+        "name": "Provider Agent",
+    },
+}
+
+
 class ReputationService:
     """Service for querying reputation"""
     
@@ -53,12 +71,11 @@ class ReputationService:
         self._init_mock_data()
     
     def _init_mock_data(self):
-        """Initialize demo reputation data"""
+        """Initialize demo reputation data with real wallet addresses"""
         self._scores = {
-            "happyclaw-agent": (85.0, 47, 4.7, 95.0),
-            "agent-alpha": (88.0, 32, 4.4, 94.0),
-            "agent-beta": (91.0, 28, 4.6, 96.0),
-            "agent-gamma": (85.0, 15, 4.2, 90.0),
+            "GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q": (85.0, 47, 4.7, 95.0),  # Happy Claw
+            "HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B": (88.0, 32, 4.4, 94.0),  # Provider
+            "3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN": (75.0, 12, 4.1, 88.0),  # Renter
         }
     
     def get_reputation(self, agent_id: str) -> Optional[ReputationDisplay]:
