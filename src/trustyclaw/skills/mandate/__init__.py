@@ -1,15 +1,18 @@
 """
 Mandate Skill for TrustyClaw
 
-Skill rental agreement management.
+Skill rental agreement management with autonomous features.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Callable, TYPE_CHECKING
 from datetime import datetime, timedelta
 from enum import Enum
 import uuid
 import json
+
+if TYPE_CHECKING:
+    pass
 
 
 class MandateStatus(Enum):
@@ -26,6 +29,20 @@ class MandateStatus(Enum):
 class MandateError(Exception):
     """Mandate operation error"""
     pass
+
+
+class RenewalCondition(Enum):
+    """Conditions for auto-renewal"""
+    ALWAYS = "always"
+    ON_SUCCESS = "on_success"
+    NEVER = "never"
+
+
+class ResolutionType(Enum):
+    """Types of dispute resolution"""
+    AUTO = "auto"           # Automated resolution using reputation
+    COMMUNITY = "community"  # Community voting
+    ESCALATED = "escalated"  # Manual escalation required
 
 
 @dataclass
@@ -91,6 +108,80 @@ class Mandate:
             "deliverable_hash": self.deliverable_hash,
             "renter_rating": self.renter_rating,
             "provider_rating": self.provider_rating,
+        }
+
+
+@dataclass
+class AutonomousMandate:
+    """
+    Enhanced mandate with autonomous features.
+    
+    Features:
+    - Auto-escrow management
+    - Automatic dispute resolution
+    - Community slashing mechanism
+    - Auto-renewal capabilities
+    """
+    base_mandate: Mandate
+    auto_escrow: bool = True
+    dispute_threshold: int = 3
+    renewal_condition: RenewalCondition = RenewalCondition.ON_SUCCESS
+    auto_complete_enabled: bool = True
+    slash_enabled: bool = True
+    dispute_count: int = 0
+    community_votes: Dict[str, int] = field(default_factory=dict)
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    last_updated: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "base_mandate": self.base_mandate.to_dict(),
+            "auto_escrow": self.auto_escrow,
+            "dispute_threshold": self.dispute_threshold,
+            "renewal_condition": self.renewal_condition.value,
+            "auto_complete_enabled": self.auto_complete_enabled,
+            "slash_enabled": self.slash_enabled,
+            "dispute_count": self.dispute_count,
+            "community_votes": self.community_votes,
+            "created_at": self.created_at,
+            "last_updated": self.last_updated,
+        }
+
+
+@dataclass
+class Resolution:
+    """
+    Result of a dispute resolution.
+    
+    Contains:
+    - Resolution type (auto, community, escalated)
+    - Winner determination
+    - Slash amounts
+    - Reasoning
+    """
+    resolution_id: str
+    mandate_id: str
+    resolution_type: ResolutionType
+    winner: str  # provider, renter, or split
+    provider_slash: float = 0.0  # Percentage (0-1)
+    renter_slash: float = 0.0    # Percentage (0-1)
+    reasoning: str = ""
+    votes_for: int = 0
+    votes_against: int = 0
+    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "resolution_id": self.resolution_id,
+            "mandate_id": self.mandate_id,
+            "resolution_type": self.resolution_type.value,
+            "winner": self.winner,
+            "provider_slash": self.provider_slash,
+            "renter_slash": self.renter_slash,
+            "reasoning": self.reasoning,
+            "votes_for": self.votes_for,
+            "votes_against": self.votes_against,
+            "timestamp": self.timestamp,
         }
 
 
@@ -459,6 +550,283 @@ class MandateSkill:
             mandate.started_at = datetime.utcnow().isoformat()
         
         return mandate
+    
+    # ============ Autonomous Operations ============
+    
+    def create_autonomous_mandate(
+        self,
+        provider: str,
+        renter: str,
+        skill_id: str,
+        amount: int,
+        deliverables: List[str],
+        auto_escrow: bool = True,
+        dispute_threshold: int = 3,
+        renewal_condition: RenewalCondition = RenewalCondition.ON_SUCCESS,
+        auto_complete_enabled: bool = True,
+        slash_enabled: bool = True,
+        duration_hours: int = 24,
+        requirements: List[str] = None,
+        revisions: int = 0,
+        exclusivity: bool = False,
+        confidentiality: bool = True,
+    ) -> AutonomousMandate:
+        """
+        Create an autonomous mandate with auto-execution features.
+        
+        Args:
+            provider: Provider wallet address
+            renter: Renter wallet address
+            skill_id: Skill being rented
+            amount: USDC amount
+            deliverables: List of expected deliverables
+            auto_escrow: Enable automatic escrow management
+            dispute_threshold: Auto-escalate after N disputes
+            renewal_condition: Condition for auto-renewal
+            auto_complete_enabled: Enable auto-completion
+            slash_enabled: Enable slashing mechanism
+            duration_hours: Max duration
+            requirements: Additional requirements
+            revisions: Number of free revisions
+            exclusivity: Exclusive use during mandate
+            confidentiality: Confidential work
+            
+        Returns:
+            AutonomousMandate with autonomous features
+        """
+        # Create base mandate
+        mandate = self.create_mandate(
+            provider=provider,
+            renter=renter,
+            skill_id=skill_id,
+            amount=amount,
+            duration_hours=duration_hours,
+            deliverables=deliverables,
+            requirements=requirements,
+            revisions=revisions,
+            exclusivity=exclusivity,
+            confidentiality=confidentiality,
+        )
+        
+        # Wrap in autonomous mandate
+        autonomous_mandate = AutonomousMandate(
+            base_mandate=mandate,
+            auto_escrow=auto_escrow,
+            dispute_threshold=dispute_threshold,
+            renewal_condition=renewal_condition,
+            auto_complete_enabled=auto_complete_enabled,
+            slash_enabled=slash_enabled,
+        )
+        
+        # Store autonomous mandate
+        if not hasattr(self, '_autonomous_mandates'):
+            self._autonomous_mandates = {}
+        self._autonomous_mandates[mandate.mandate_id] = autonomous_mandate
+        
+        return autonomous_mandate
+    
+    def auto_renew_mandate(
+        self,
+        mandate_id: str,
+        condition: RenewalCondition = None,
+    ) -> Mandate:
+        """
+        Automatically renew a mandate based on condition.
+        
+        Args:
+            mandate_id: Mandate to renew
+            condition: Override renewal condition
+            
+        Returns:
+            Renewed Mandate or None if not eligible
+        """
+        autonomous = self._get_autonomous_mandate(mandate_id)
+        mandate = autonomous.base_mandate
+        
+        if mandate.status != MandateStatus.COMPLETED:
+            raise MandateError(f"Mandate {mandate_id} is not COMPLETED")
+        
+        # Check renewal condition
+        renewal_cond = condition or autonomous.renewal_condition
+        
+        if renewal_cond == RenewalCondition.NEVER:
+            return None
+        
+        if renewal_cond == RenewalCondition.ON_SUCCESS:
+            # Only renew if renter rating >= 4
+            if mandate.renter_rating and mandate.renter_rating < 4:
+                return None
+        
+        # Check if already renewed too many times
+        renewal_count = getattr(mandate, 'renewal_count', 0)
+        if renewal_count >= 3:
+            return None
+        
+        # Create new mandate with same terms
+        new_mandate = self.create_mandate(
+            provider=mandate.provider,
+            renter=mandate.renter,
+            skill_id=mandate.terms.skill_id,
+            amount=mandate.terms.amount,
+            duration_hours=mandate.terms.duration_hours,
+            deliverables=mandate.terms.deliverables,
+            requirements=mandate.terms.requirements,
+            revisions=mandate.terms.revisions,
+            exclusivity=mandate.terms.exclusivity,
+            confidentiality=mandate.terms.confidentiality,
+        )
+        
+        # Track renewal
+        new_mandate.renewal_count = renewal_count + 1
+        new_mandate.original_mandate_id = mandate_id
+        
+        # Update autonomous mandate reference
+        if autonomous.renewal_condition == RenewalCondition.ALWAYS:
+            self._autonomous_mandates[new_mandate.mandate_id] = autonomous
+            autonomous.base_mandate = new_mandate
+            autonomous.last_updated = datetime.utcnow().isoformat()
+        
+        return new_mandate
+    
+    def auto_resolve_dispute(
+        self,
+        mandate_id: str,
+        evidence: List[str],
+        provider_reputation: float,
+        renter_reputation: float,
+    ) -> Resolution:
+        """
+        Automatically resolve a dispute using reputation scores.
+        
+        Args:
+            mandate_id: Mandate in dispute
+            evidence: List of evidence hashes
+            provider_reputation: Provider's reputation score (0-100)
+            renter_reputation: Renter's reputation score (0-100)
+            
+        Returns:
+            Resolution with outcome and slash amounts
+        """
+        autonomous = self._get_autonomous_mandate(mandate_id)
+        mandate = autonomous.base_mandate
+        
+        if mandate.status != MandateStatus.ACTIVE:
+            raise MandateError(f"Mandate {mandate_id} is not ACTIVE")
+        
+        # Update dispute count
+        autonomous.dispute_count += 1
+        
+        # Generate resolution ID
+        resolution_id = f"res-{uuid.uuid4().hex[:12]}"
+        
+        # Check if should auto-resolve or escalate
+        if autonomous.dispute_count >= autonomous.dispute_threshold:
+            # Escalate to community voting
+            resolution_type = ResolutionType.ESCALATED
+            winner = "split"
+            provider_slash = 0.0
+            renter_slash = 0.0
+            reasoning = (
+                f"Dispute threshold ({autonomous.dispute_threshold}) exceeded. "
+                "Escalating to community voting."
+            )
+        else:
+            # Auto-resolve using reputation
+            resolution_type = ResolutionType.AUTO
+            
+            # Calculate winner based on reputation
+            if provider_reputation >= renter_reputation:
+                winner = "provider"
+                # Slash renter for disputing valid work
+                renter_slash = 0.1 if renter_reputation < 50 else 0.0
+                provider_slash = 0.0
+                reasoning = (
+                    f"Provider has higher reputation ({provider_reputation:.1f} vs {renter_reputation:.1f}). "
+                    "Dispute rejected."
+                )
+            elif renter_reputation > provider_reputation:
+                winner = "renter"
+                # Slash provider for not meeting standards
+                provider_slash = 0.2 if provider_reputation < 50 else 0.1
+                renter_slash = 0.0
+                reasoning = (
+                    f"Renter has higher reputation ({renter_reputation:.1f} vs {provider_reputation:.1f}). "
+                    "Provider penalized for substandard work."
+                )
+            else:
+                winner = "split"
+                # Split penalty
+                provider_slash = 0.1
+                renter_slash = 0.1
+                reasoning = (
+                    "Reputation scores equal. Split penalty applied. "
+                    "Both parties encouraged to communicate better."
+                )
+        
+        resolution = Resolution(
+            resolution_id=resolution_id,
+            mandate_id=mandate_id,
+            resolution_type=resolution_type,
+            winner=winner,
+            provider_slash=provider_slash,
+            renter_slash=renter_slash,
+            reasoning=reasoning,
+        )
+        
+        # Store resolution
+        if not hasattr(self, '_resolutions'):
+            self._resolutions = {}
+        self._resolutions[resolution_id] = resolution
+        
+        return resolution
+    
+    def vote_on_slash(
+        self,
+        resolution_id: str,
+        voter_address: str,
+        vote_for: bool,
+    ) -> None:
+        """
+        Vote on a slash resolution (community voting).
+        
+        Args:
+            resolution_id: Resolution to vote on
+            voter_address: Voter's wallet address
+            vote_for: True for slash, False against
+        """
+        if resolution_id not in self._resolutions:
+            raise MandateError(f"Resolution {resolution_id} not found")
+        
+        resolution = self._resolutions[resolution_id]
+        
+        # Track vote
+        if not hasattr(resolution, 'votes'):
+            resolution.votes = {}
+        
+        resolution.votes[voter_address] = vote_for
+        
+        # Update counts
+        resolution.votes_for = sum(1 for v in resolution.votes.values() if v)
+        resolution.votes_against = sum(1 for v in resolution.votes.values() if not v)
+    
+    def get_autonomous_mandate(self, mandate_id: str) -> Optional[AutonomousMandate]:
+        """Get autonomous mandate by base mandate ID"""
+        if not hasattr(self, '_autonomous_mandates'):
+            return None
+        return self._autonomous_mandates.get(mandate_id)
+    
+    def _get_autonomous_mandate(self, mandate_id: str) -> AutonomousMandate:
+        """Get autonomous mandate or raise error"""
+        autonomous = self.get_autonomous_mandate(mandate_id)
+        if not autonomous:
+            raise MandateError(f"Autonomous mandate {mandate_id} not found")
+        return autonomous
+    
+    def get_resolution(self, resolution_id: str) -> Optional[Resolution]:
+        """Get resolution by ID"""
+        if not hasattr(self, '_resolutions'):
+            return None
+        return self._resolutions.get(resolution_id)
     
     # ============ Helpers ============
     

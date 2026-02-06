@@ -5,15 +5,17 @@ Real SPL Token operations for USDC on Solana.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple, Union
 from enum import Enum
 import os
 import base64
+import time
+import hashlib
 
 from solana.rpc.api import Client as SolanaClient
 from solana.rpc.commitment import Confirmed, Finalized
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 
 
 class TokenError(Exception):
