@@ -46,10 +46,10 @@ from .unified_balance import (
     get_unified_balance,
 )
 from .reputation_chain import (
-    ReputationChainSDK,
+    ReputationPDAProgram,
     ReputationScoreData,
     ReviewData,
-    get_reputation_chain,
+    get_reputation_program,
 )
 from .review_system import (
     ReviewService,
@@ -112,10 +112,10 @@ __all__ = [
     "AggregatedBalance",
     "Token",
     "get_unified_balance",
-    "ReputationChainSDK",
+    "ReputationPDAProgram",
     "ReputationScoreData",
     "ReviewData",
-    "get_reputation_chain",
+    "get_reputation_program",
     "ReviewService",
     "Review",
     "ReviewStatus",

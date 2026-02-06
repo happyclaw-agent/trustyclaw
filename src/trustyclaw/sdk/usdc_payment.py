@@ -32,52 +32,7 @@ try:
 except ImportError:
     HAS_SOLANA = False
 
-# Try to import USDC client, provide mock if not available
-try:
-    from .usdc import USDCClient, TransferResult, TransferStatus
-except (ImportError, TypeError):
-    # Provide mock classes for testing
-    class TransferStatus(Enum):
-        PENDING = "pending"
-        CONFIRMED = "confirmed"
-        FINALIZED = "finalized"
-        FAILED = "failed"
-    
-    class TransferResult:
-        def __init__(self, signature, status, source_account, destination_account, amount, token="USDC"):
-            self.signature = signature
-            self.status = status
-            self.source_account = source_account
-            self.destination_account = destination_account
-            self.amount = amount
-            self.token = token
-        
-        @property
-        def explorer_url(self):
-            return f"https://explorer.solana.com/tx/{self.signature}?cluster=devnet"
-    
-    class USDCClient:
-        DEVNET_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-        MAINNET_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-        
-        def __init__(self, network="devnet", keypair_path=None):
-            self.network = network
-            self.mint = self.DEVNET_MINT if network == "devnet" else self.MAINNET_MINT
-        
-        def get_balance(self, wallet_address):
-            return 100.0  # Mock balance
-        
-        def transfer(self, from_wallet, to_wallet, amount):
-            return TransferResult(
-                signature=f"transfer-{from_wallet[:8]}-{to_wallet[:8]}",
-                status=TransferStatus.CONFIRMED,
-                source_account=f"ata-{from_wallet[:8]}",
-                destination_account=f"ata-{to_wallet[:8]}",
-                amount=amount,
-            )
-        
-        def decimals(self):
-            return 6
+from .usdc import USDCClient, TransferResult, TransferStatus
 
 
 class PaymentError(Exception):
@@ -362,7 +317,7 @@ class USDCPaymentService:
         """
         self.network = network
         self.usdc_client = usdc_client or USDCClient(network=network)
-        self.multisig_config = multisig_config or MultisigConfig(
+        self.multisig_config = multsig_config or MultisigConfig(
             threshold_usd=self.MULTISIG_THRESHOLD_USD,
             required_signers=[],
             required_count=2,
