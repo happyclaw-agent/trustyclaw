@@ -12,29 +12,9 @@ import base64
 import time
 import hashlib
 
-<<<<<<< HEAD
-from solana.rpc.api import Client as SolanaClient
-from solana.rpc.commitment import Confirmed, Finalized
-from solders.keypair import Keypair
-from solders.pubkey import Pubkey
-=======
-try:
-    from solana.rpc.api import Client as SolanaClient
-    from solana.rpc.commitment import Confirmed, Finalized
-    from solders.keypair import Keypair
-    from solders.pubkey import Pubkey
-    HAS_SOLANA = True
-except ImportError:
-    HAS_SOLANA = False
-    Keypair = None
-    Pubkey = None
->>>>>>> main
-
-
 class TokenError(Exception):
     """Token operation error"""
     pass
-
 
 class TransferStatus(Enum):
     """Transfer status"""
@@ -42,7 +22,6 @@ class TransferStatus(Enum):
     CONFIRMED = "confirmed"
     FINALIZED = "finalized"
     FAILED = "failed"
-
 
 @dataclass
 class TokenAccount:
@@ -58,7 +37,6 @@ class TokenAccount:
         """Balance in raw units"""
         return int(self.balance * (10 ** self.decimals))
 
-
 @dataclass
 class TransferResult:
     """Token transfer result"""
@@ -73,7 +51,6 @@ class TransferResult:
     def explorer_url(self) -> str:
         """Solana Explorer URL"""
         return f"https://explorer.solana.com/tx/{self.signature}?cluster=devnet"
-
 
 class USDCClient:
     """USDC token operations for TrustyClaw"""
@@ -218,7 +195,6 @@ class USDCClient:
     def raw_to_amount(self, raw: int) -> float:
         """Convert raw units to UI amount"""
         return raw / (10 ** self.decimals())
-
 
 def get_usdc_client(network: str = "devnet") -> USDCClient:
     """Get a USDC client"""

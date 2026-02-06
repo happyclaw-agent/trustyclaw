@@ -2,140 +2,146 @@
 TrustyClaw SDK - Python SDK for interacting with TrustyClaw services
 
 Modules:
-- client: Solana RPC client wrapper
-- identity: Agent identity management
-- reputation: Reputation scoring engine
-- escrow: Escrow contract interface
 - solana: Real Solana blockchain integration
 - usdc: USDC SPL Token integration
-- cross_chain: Cross-chain bridge service
-- unified_balance: Unified balance API
-- reputation_chain: On-chain reputation storage
-- review_system: Full review lifecycle management
 - escrow_contract: Secure payment escrow
+- reputation_chain: On-chain reputation storage
+- cross_chain: Cross-chain bridge service
 - matching: ML-based agent-skill matching engine
 """
 
-from .client import SolanaClient
-from .identity import AgentIdentity, IdentityManager
-from .reputation import ReputationEngine, Review, ReputationScore
-from .escrow import EscrowClient, EscrowTerms, EscrowState
-from .solana import SolanaRPCClient, WalletInfo, TransactionInfo, get_client
-from .usdc import USDCClient, TokenAccount, TransferResult, get_usdc_client
+from .solana import (
+    SolanaRPCClient,
+    WalletInfo,
+    TransactionInfo,
+    Network,
+    get_client,
+)
+from .usdc import (
+    USDCClient,
+    TokenAccount,
+    TransferResult,
+    TokenError,
+    TransferStatus,
+    get_usdc_client,
+)
+from .escrow_contract import (
+    EscrowClient,
+    EscrowState,
+    EscrowError,
+    EscrowTerms,
+    EscrowData,
+    get_escrow_client,
+    get_escrow_with_payment_service,
+)
+from .reputation_chain import (
+    ReputationChainSDK,
+    ReputationError,
+    ReputationScoreData,
+    ReviewData,
+    get_reputation_chain,
+)
+from .cross_chain import (
+    CrossChainBridge,
+    Chain,
+    BridgeStatus,
+    BridgeError,
+    BridgeTransaction,
+    BridgeQuote,
+    get_bridge_client,
+)
+from .matching import (
+    MatchingEngine,
+    TaskRequirements,
+    AgentRecommendation,
+    SkillMatch,
+    PricePrediction,
+    TimeEstimate,
+    get_matching_engine,
+)
 from .keypair import (
     KeypairManager,
     KeypairError,
     WalletInfo as KeypairWalletInfo,
     get_keypair_manager,
 )
-from .cross_chain import (
-    CrossChainBridge,
-    BridgeTransaction,
-    BridgeStatus,
-    BridgeQuote,
-    Chain,
-    get_bridge_client,
+from .auto_executor import (
+    AutoExecutor,
+    ExecutionEvent,
+    ExecutionContext,
+    ExecutionResult,
+    ExecutionRule,
+    get_auto_executor,
 )
-from .unified_balance import (
-    UnifiedBalance,
-    UnionWallet,
-    ChainBalance,
-    AggregatedBalance,
-    Chain,
-    Token,
-    get_unified_balance,
-)
-from .reputation_chain import (
-    ReputationPDAProgram,
-    ReputationScoreData,
-    ReviewData,
-    get_reputation_program,
-)
-from .review_system import (
-    ReviewService,
-    Review,
-    ReviewStatus,
-    ReviewDispute,
-    ReviewVote,
-    get_review_service,
-)
-from .escrow_contract import (
-    EscrowClient as EscrowContractClient,
-    Escrow,
-    EscrowTerms,
-    EscrowState,
-    get_escrow_client,
-)
-from .matching import (
-    MatchingEngine,
-    TaskRequirements,
-    RenterHistory,
-    AgentRecommendation,
-    SkillMatch,
-    PricePrediction,
-    TimeEstimate,
-    DemandForecast,
-    get_matching_engine,
-)
+# Slashing - commented out due to merge conflicts
+# from .slashing import (
+#     SlashingMechanism,
+#     SlashReason,
+#     SlashStatus,
+#     SlashProposal,
+#     SlashResult,
+# )
 
 __all__ = [
-    "SolanaClient",
-    "AgentIdentity",
-    "IdentityManager", 
-    "ReputationEngine",
-    "Review",
-    "ReputationScore",
-    "EscrowClient",
-    "EscrowTerms",
-    "EscrowState",
+    # Solana
     "SolanaRPCClient",
     "WalletInfo",
-    "TransactionInfo",
+    "TransactionInfo", 
+    "Network",
     "get_client",
+    # USDC
     "USDCClient",
     "TokenAccount",
     "TransferResult",
+    "TokenError",
+    "TransferStatus",
     "get_usdc_client",
-    "KeypairManager",
-    "KeypairError",
-    "KeypairWalletInfo",
-    "get_keypair_manager",
-    "CrossChainBridge",
-    "BridgeTransaction",
-    "BridgeStatus",
-    "BridgeQuote",
-    "Chain",
-    "get_bridge_client",
-    "UnifiedBalance",
-    "UnionWallet",
-    "ChainBalance",
-    "AggregatedBalance",
-    "Token",
-    "get_unified_balance",
-    "ReputationPDAProgram",
+    # Escrow
+    "EscrowClient",
+    "EscrowState",
+    "EscrowError",
+    "EscrowTerms",
+    "EscrowData",
+    "get_escrow_client",
+    "get_escrow_with_payment_service",
+    # Reputation
+    "ReputationChainSDK",
+    "ReputationError",
     "ReputationScoreData",
     "ReviewData",
-    "get_reputation_program",
-    "ReviewService",
-    "Review",
-    "ReviewStatus",
-    "ReviewDispute",
-    "ReviewVote",
-    "get_review_service",
-    "EscrowContractClient",
-    "Escrow",
-    "EscrowTerms",
-    "EscrowState",
-    "get_escrow_client",
+    "get_reputation_chain",
+    # Cross-chain
+    "CrossChainBridge",
+    "Chain",
+    "BridgeStatus",
+    "BridgeError",
+    "BridgeTransaction",
+    "BridgeQuote",
+    "get_bridge_client",
+    # Matching
     "MatchingEngine",
     "TaskRequirements",
-    "RenterHistory",
     "AgentRecommendation",
     "SkillMatch",
     "PricePrediction",
     "TimeEstimate",
-    "DemandForecast",
     "get_matching_engine",
+    # Keypair
+    "KeypairManager",
+    "KeypairError",
+    "KeypairWalletInfo",
+    "get_keypair_manager",
+    # Auto Executor
+    "AutoExecutor",
+    "ExecutionEvent",
+    "ExecutionContext",
+    "ExecutionResult",
+    "ExecutionRule",
+    "get_auto_executor",
+    # Slashing - commented out due to merge conflicts
+# "SlashingMechanism",
+# "SlashReason",  
+# "SlashStatus",
+# "SlashProposal",
+# "SlashResult",
 ]
-
-__version__ = "0.1.0"

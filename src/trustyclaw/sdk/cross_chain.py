@@ -11,11 +11,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import os
 import hashlib
-<<<<<<< HEAD
-=======
 import hmac
->>>>>>> main
-
 
 class Chain(Enum):
     """Supported blockchain networks"""
@@ -23,7 +19,6 @@ class Chain(Enum):
     ETHEREUM = "ethereum"
     POLYGON = "polygon"
     ARBITRUM = "arbitrum"
-
 
 class BridgeStatus(Enum):
     """Bridge transaction status"""
@@ -33,11 +28,9 @@ class BridgeStatus(Enum):
     FAILED = "failed"
     REFUNDED = "refunded"
 
-
 class BridgeError(Exception):
     """Bridge operation error"""
     pass
-
 
 @dataclass
 class BridgeTransaction:
@@ -65,7 +58,6 @@ class BridgeTransaction:
         elif self.source_chain == Chain.ARBITRUM:
             self.explorer_url = f"https://arbiscan.io/tx/{self.transaction_id}"
 
-
 @dataclass
 class BridgeQuote:
     """Bridge quote from Wormhole"""
@@ -75,7 +67,6 @@ class BridgeQuote:
     fees: int
     estimated_time: int  # Seconds
     destination_amount: int
-
 
 class CrossChainBridge:
     """
@@ -354,21 +345,15 @@ class CrossChainBridge:
                 wormhole_vaa=f"vaa_{tx_id[:32]}",
             )
             
-<<<<<<< HEAD
             # Simulate completion
-=======
             # Simulate completion after short delay
->>>>>>> main
             tx.status = BridgeStatus.COMPLETED
             
             self._pending_transactions[tx_id] = tx
             return tx
         
         # Mainnet: Would interact with real Wormhole contracts
-<<<<<<< HEAD
-=======
         # This is a placeholder for actual implementation
->>>>>>> main
         tx = BridgeTransaction(
             transaction_id=tx_id,
             source_chain=source_chain,
@@ -468,7 +453,6 @@ class CrossChainBridge:
                 return 900  # 15 minutes
         
         return 900  # Default 15 minutes
-
 
 def get_bridge_client(network: str = "devnet") -> CrossChainBridge:
     """

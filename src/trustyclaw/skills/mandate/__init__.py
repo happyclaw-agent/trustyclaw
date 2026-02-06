@@ -53,7 +53,7 @@ class AutonomousMandate:
     - Community slashing mechanism
     - Auto-renewal capabilities
     """
-    base_mandate: Mandate
+    base_mandate: "Mandate"
     auto_escrow: bool = True
     dispute_threshold: int = 3
     renewal_condition: RenewalCondition = RenewalCondition.ON_SUCCESS

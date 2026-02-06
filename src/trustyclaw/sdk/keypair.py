@@ -12,8 +12,8 @@ import base64
 import json
 import hashlib
 
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 
 
 class KeypairError(Exception):

@@ -15,7 +15,7 @@ sys.path.insert(0, 'src')
 from trustyclaw.sdk.solana import get_client
 from trustyclaw.sdk.usdc import get_usdc_client
 from trustyclaw.sdk.escrow_contract import get_escrow_client
-from trustyclaw.sdk.reputation_chain import get_reputation_program
+from trustyclaw.sdk.reputation_chain import get_reputation_chain
 from trustyclaw.sdk.review_system import get_review_service
 from trustyclaw.skills.mandate import get_mandate_skill
 from trustyclaw.skills.discovery import get_discovery_skill
@@ -318,7 +318,7 @@ def demo_reputation_chain():
     """Demo on-chain reputation storage"""
     print_header("ON-CHAIN REPUTATION")
     
-    program = get_reputation_program("devnet")
+    program = get_reputation_chain("devnet")
     
     print_section("Reputation PDA")
     pda = program.derive_reputation_pda(PROVIDER_WALLET)

@@ -24,7 +24,8 @@ try:
 except ImportError:
     HAS_ANCHOR = False
 
-from .solana import get_solana_client, get_wallet
+from .solana import get_client
+from .keypair import KeypairManager
 
 
 class ReputationError(Exception):
@@ -167,7 +168,7 @@ class ReputationChainSDK:
         self.program_id = program_id or REPUTATION_PROGRAM_ID
         
         if HAS_ANCHOR:
-            self.client = get_solana_client(network)
+            self.client = get_client(network)
             self.program = self._load_program()
         else:
             self.client = None
@@ -179,7 +180,7 @@ class ReputationChainSDK:
             return None
         
         try:
-            wallet = get_wallet()
+            wallet = KeypairManager()
             provider = Provider(self.client, wallet)
             
             # Load IDL for reputation program

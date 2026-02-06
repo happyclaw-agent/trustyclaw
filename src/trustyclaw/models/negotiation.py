@@ -6,14 +6,10 @@ delivery time preferences, and mandate acceptance criteria.
 """
 
 from dataclasses import dataclass, field
-<<<<<<< HEAD
 from datetime import datetime, timedelta
-=======
 from datetime import datetime
->>>>>>> main
 from enum import Enum
 from typing import Optional, List, Dict, Any
-
 
 class NegotiationStrategy(Enum):
     """Strategies for negotiation behavior"""
@@ -21,7 +17,6 @@ class NegotiationStrategy(Enum):
     PRICE_NEGOTIATE = "price-negotiate"
     ALWAYS_COUNTER = "always-counter"
     MANUAL_REVIEW = "manual-review"
-
 
 class PriceRange(Enum):
     """Price range preferences"""
@@ -31,14 +26,12 @@ class PriceRange(Enum):
     FLEXIBLE_20_PERCENT = "flexible-20-percent"
     OPEN = "open"
 
-
 class DeliveryPreference(Enum):
     """Delivery time preferences"""
     EXPRESS = "express"  # Fast delivery priority
     STANDARD = "standard"
     FLEXIBLE = "flexible"
     NEGOTIABLE = "negotiable"
-
 
 @dataclass
 class AutoAcceptCriteria:
@@ -63,7 +56,6 @@ class AutoAcceptCriteria:
         has_deposit: bool,
     ) -> bool:
         """Determine if a mandate should be auto-accepted"""
-<<<<<<< HEAD
         # Check blocked clients first
         if client_address in self.blocked_clients:
             return False
@@ -72,12 +64,10 @@ class AutoAcceptCriteria:
         if client_address in self.trusted_clients:
             return True
         
-=======
         # Check blocked clients
         if client_address in self.blocked_clients:
             return False
         
->>>>>>> main
         # Check price range
         if price_usdc < self.min_price_usdc:
             return False
@@ -100,13 +90,10 @@ class AutoAcceptCriteria:
         if self.require_deposit and not has_deposit:
             return False
         
-<<<<<<< HEAD
-=======
         # Check trusted clients override
         if client_address in self.trusted_clients:
             return True
         
->>>>>>> main
         return True
     
     def to_dict(self) -> Dict[str, Any]:
@@ -121,7 +108,6 @@ class AutoAcceptCriteria:
             "trusted_clients": self.trusted_clients,
             "blocked_clients": self.blocked_clients,
         }
-
 
 @dataclass
 class PriceNegotiationRules:
@@ -155,13 +141,9 @@ class PriceNegotiationRules:
         """Check if a counter-offer is acceptable"""
         min_price, max_price = self.get_acceptable_range(base_price)
         
-<<<<<<< HEAD
+        # Check counter count (max_counter_offers means 0 to max_counter_offers-1 are valid)
         # Check counter count (max_counter_offers means 0 to max_counter_offers-1 are valid)
         if counter_number >= self.max_counter_offers:
-=======
-        # Check counter count
-        if counter_number > self.max_counter_offers:
->>>>>>> main
             return False
         
         # Check if counter is within range
@@ -185,7 +167,6 @@ class PriceNegotiationRules:
             "auto_accept_counter": self.auto_accept_counter,
             "minimum_counter_increment_percent": self.minimum_counter_increment_percent,
         }
-
 
 @dataclass
 class DeliveryPreferences:
@@ -235,7 +216,6 @@ class DeliveryPreferences:
             "max_extensions": self.max_extensions,
         }
 
-
 @dataclass
 class NegotiationRules:
     """Complete negotiation rules for an agent"""
@@ -270,11 +250,8 @@ class NegotiationRules:
     
     def get_response_deadline(self) -> datetime:
         """Get the deadline for responding to negotiations"""
-<<<<<<< HEAD
         return datetime.utcnow() + timedelta(seconds=self.auto_response_delay_seconds)
-=======
         return datetime.utcnow() + datetime.timedelta(seconds=self.auto_response_delay_seconds)
->>>>>>> main
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -285,7 +262,6 @@ class NegotiationRules:
             "auto_response_delay_seconds": self.auto_response_delay_seconds,
             "max_concurrent_negotiations": self.max_concurrent_negotiations,
         }
-
 
 @dataclass
 class NegotiationSession:
@@ -302,11 +278,8 @@ class NegotiationSession:
     client_duration: Optional[int] = None
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-<<<<<<< HEAD
     deadline: str = field(default_factory=lambda: (datetime.utcnow() + timedelta(hours=24)).isoformat())
-=======
     deadline: str = field(default_factory=lambda: (datetime.utcnow() + datetime.timedelta(hours=24)).isoformat())
->>>>>>> main
     history: List[Dict] = field(default_factory=list)
     
     def add_counter(

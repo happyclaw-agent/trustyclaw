@@ -11,11 +11,7 @@ import math
 import statistics
 import logging
 
-<<<<<<< HEAD
 from trustyclaw.models.matching import (
-=======
-from .matching import (
->>>>>>> main
     TaskRequirements,
     RenterHistory,
     AgentRecommendation,
@@ -27,9 +23,7 @@ from .matching import (
     MatchingMetrics,
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 # Base prices for different skill categories (USDC lamports per task)
 BASE_PRICES: Dict[str, int] = {
@@ -61,7 +55,6 @@ SKILL_TAG_SYNONYMS: Dict[str, List[str]] = {
     "Data": ["data", "analytics", "statistics", "visualization"],
     "Image": ["image", "image-generation", "art", "graphics"],
 }
-
 
 class MatchingEngine:
     """
@@ -119,8 +112,7 @@ class MatchingEngine:
             "3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN": 0.78,
         }
     
-    # ============ Agent Recommendation ============
-    
+    # ============ Agent Recommendation =====    
     def recommend_agents(
         self,
         task_requirements: TaskRequirements,
@@ -462,8 +454,7 @@ class MatchingEngine:
         
         return risks
     
-    # ============ Price Prediction ============
-    
+    # ============ Price Prediction =====    
     def predict_price(
         self,
         skill_id: str,
@@ -570,8 +561,7 @@ class MatchingEngine:
             else:
                 return "Price seems high - consider other options"
     
-    # ============ Delivery Time Estimation ============
-    
+    # ============ Delivery Time Estimation =====    
     def estimate_delivery_time(
         self,
         agent_address: str,
@@ -659,8 +649,7 @@ class MatchingEngine:
             return self._agent_popularity[agent_address]
         return 0.7  # Default
     
-    # ============ Demand Forecasting ============
-    
+    # ============ Demand Forecasting =====    
     def forecast_demand(self, skill_id: str) -> DemandForecast:
         """
         Forecast demand for a skill category.
@@ -701,8 +690,7 @@ class MatchingEngine:
             seasonal_factor=seasonal_factor,
         )
     
-    # ============ Metrics ============
-    
+    # ============ Metrics =====    
     def get_metrics(self) -> MatchingMetrics:
         """Get matching engine metrics"""
         return MatchingMetrics(
@@ -742,7 +730,6 @@ class MatchingEngine:
         else:
             current = self._agent_popularity.get(agent_address, 0.5)
             self._agent_popularity[agent_address] = max(0.1, current - 0.02)
-
 
 def get_matching_engine() -> MatchingEngine:
     """

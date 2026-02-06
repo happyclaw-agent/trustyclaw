@@ -24,7 +24,7 @@ import json
 try:
     from solana.rpc.api import Client as SolanaClient
     from solana.rpc.commitment import Confirmed, Finalized
-    from solana.keypair import Keypair
+    from solders.keypair import Keypair
     from solana.publickey import PublicKey
     from spl.token.client import Token as SPLToken
     from spl.token.instructions import transfer, TransferParams
