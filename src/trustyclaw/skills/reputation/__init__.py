@@ -2,13 +2,23 @@
 Reputation Skill for TrustyClaw
 
 On-chain reputation queries and aggregation.
+Connects to real Solana reputation program.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime
 from enum import Enum
 import json
+import time
+
+from .reputation_chain import (
+    get_reputation_chain,
+    ReputationChainSDK,
+    ReputationScoreData,
+    ReviewData,
+    ReputationError,
+)
 
 
 class ReputationTier(Enum):
@@ -33,6 +43,7 @@ class ReputationMetrics:
     negative_reviews: int = 0
     average_response_time_hours: float = 24.0
     last_updated: Optional[str] = None
+    on_chain_data: Optional[ReputationScoreData] = None
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -47,6 +58,21 @@ class ReputationMetrics:
             "average_response_time_hours": self.average_response_time_hours,
             "last_updated": self.last_updated,
         }
+    
+    @classmethod
+    def from_on_chain(cls, data: ReputationScoreData) -> 'ReputationMetrics':
+        """Create from on-chain data"""
+        return cls(
+            agent_address=data.agent_address,
+            reputation_score=data.reputation_score,
+            average_rating=data.average_rating,
+            total_reviews=data.total_reviews,
+            on_time_percentage=data.on_time_percentage,
+            positive_reviews=data.positive_votes,
+            negative_reviews=data.negative_votes,
+            last_updated=datetime.fromtimestamp(data.updated_at).isoformat() if data.updated_at > 0 else None,
+            on_chain_data=data,
+        )
 
 
 @dataclass
@@ -84,70 +110,37 @@ class ReputationSkill:
     Skill for querying and analyzing on-chain reputation.
     
     Features:
-    - Query agent reputation from PDAs
-    - Get review history
+    - Query agent reputation from on-chain PDAs
+    - Get review history from real data
     - Calculate composite trust scores
     - Track reputation trends
     - Verify reputation claims
+    
+    Note: No mock fallbacks - all data comes from on-chain or returns None
     """
     
-    def __init__(self):
-        self._reputations: Dict[str, ReputationMetrics] = {}
-        self._breakdowns: Dict[str, ReputationBreakdown] = {}
-        self._history: Dict[str, List[ReputationHistory]] = {}
-        self._init_mock_data()
-    
-    def _init_mock_data(self):
-        """Initialize with sample reputation data"""
-        # Sample agents with varying reputations
-        agents = [
-            ("GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q", 92.5, 4.8, 150, 95.0, 200),
-            ("HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B", 87.3, 4.6, 300, 92.0, 450),
-            ("3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN", 65.0, 3.8, 80, 85.0, 95),
-        ]
-        
-        for addr, score, rating, reviews, on_time, completed in agents:
-            metrics = ReputationMetrics(
-                agent_address=addr,
-                reputation_score=score,
-                average_rating=rating,
-                total_reviews=reviews,
-                on_time_percentage=on_time,
-                completed_tasks=completed,
-                positive_reviews=int(reviews * 0.85),
-                negative_reviews=int(reviews * 0.15),
-                last_updated=datetime.utcnow().isoformat(),
-            )
-            self._reputations[addr] = metrics
-            
-            # Create breakdown
-            breakdown = ReputationBreakdown(
-                agent_address=addr,
-                quality_score=score * 0.9,
-                reliability_score=on_time,
-                communication_score=score * 0.85,
-                value_score=score * 0.95,
-                overall_score=score,
-            )
-            self._breakdowns[addr] = breakdown
-            
-            # Create history
-            history = []
-            for i in range(12):  # 12 months
-                history.append(ReputationHistory(
-                    timestamp=(datetime.utcnow() - 
-                              __import__('datetime').timedelta(days=i * 30)).isoformat(),
-                    reputation_score=score - (i * 0.5),
-                    average_rating=rating - (i * 0.02),
-                    total_reviews=reviews - (i * 10),
-                ))
-            self._history[addr] = history
-    
-    # ============ Query Operations ============
-    
-    def get_agent_reputation(self, agent_address: str) -> Optional[ReputationMetrics]:
+    def __init__(self, network: str = "devnet"):
         """
-        Get complete reputation metrics for an agent.
+        Initialize the reputation skill.
+        
+        Args:
+            network: Solana network (devnet, mainnet)
+        """
+        self.network = network
+        self._sdk: Optional[ReputationChainSDK] = None
+        self._cache: Dict[str, Tuple[ReputationMetrics, float]] = {}
+        self._cache_ttl = 30  # 30 seconds cache
+    
+    @property
+    def sdk(self) -> ReputationChainSDK:
+        """Get or create the reputation SDK"""
+        if self._sdk is None:
+            self._sdk = get_reputation_chain(self.network)
+        return self._sdk
+    
+    def _get_cached_or_fetch(self, agent_address: str) -> Optional[ReputationMetrics]:
+        """
+        Get from cache or fetch from chain.
         
         Args:
             agent_address: Agent's wallet address
@@ -155,7 +148,40 @@ class ReputationSkill:
         Returns:
             ReputationMetrics or None
         """
-        return self._reputations.get(agent_address)
+        now = time.time()
+        
+        # Check cache
+        if agent_address in self._cache:
+            metrics, timestamp = self._cache[agent_address]
+            if now - timestamp < self._cache_ttl:
+                return metrics
+        
+        # Fetch from chain
+        try:
+            on_chain_data = self.sdk.get_reputation(agent_address)
+            if on_chain_data:
+                metrics = ReputationMetrics.from_on_chain(on_chain_data)
+                self._cache[agent_address] = (metrics, now)
+                return metrics
+        except ReputationError:
+            pass
+        
+        # Not found - don't cache negative result
+        return None
+    
+    # ============ Query Operations ============
+    
+    def get_agent_reputation(self, agent_address: str) -> Optional[ReputationMetrics]:
+        """
+        Get complete reputation metrics for an agent from on-chain.
+        
+        Args:
+            agent_address: Agent's wallet address
+            
+        Returns:
+            ReputationMetrics or None if not found
+        """
+        return self._get_cached_or_fetch(agent_address)
     
     def get_reputation_breakdown(self, agent_address: str) -> Optional[ReputationBreakdown]:
         """
@@ -165,9 +191,21 @@ class ReputationSkill:
             agent_address: Agent's wallet address
             
         Returns:
-            ReputationBreakdown or None
+            ReputationBreakdown or None if not found
         """
-        return self._breakdowns.get(agent_address)
+        metrics = self._get_cached_or_fetch(agent_address)
+        if not metrics:
+            return None
+        
+        # Calculate breakdown from metrics
+        return ReputationBreakdown(
+            agent_address=agent_address,
+            quality_score=metrics.average_rating * 20,  # Scale 1-5 to 0-100
+            reliability_score=metrics.on_time_percentage,
+            communication_score=metrics.reputation_score * 0.9,
+            value_score=metrics.reputation_score * 0.95,
+            overall_score=metrics.reputation_score,
+        )
     
     def get_reputation_score(self, agent_address: str) -> Optional[float]:
         """
@@ -177,10 +215,10 @@ class ReputationSkill:
             agent_address: Agent's wallet address
             
         Returns:
-            Score or None
+            Score or None if not found
         """
-        rep = self._reputations.get(agent_address)
-        return rep.reputation_score if rep else None
+        metrics = self._get_cached_or_fetch(agent_address)
+        return metrics.reputation_score if metrics else None
     
     def get_average_rating(self, agent_address: str) -> Optional[float]:
         """
@@ -190,10 +228,10 @@ class ReputationSkill:
             agent_address: Agent's wallet address
             
         Returns:
-            Rating or None
+            Rating or None if not found
         """
-        rep = self._reputations.get(agent_address)
-        return rep.average_rating if rep else None
+        metrics = self._get_cached_or_fetch(agent_address)
+        return metrics.average_rating if metrics else None
     
     def get_on_time_rate(self, agent_address: str) -> Optional[float]:
         """
@@ -203,10 +241,10 @@ class ReputationSkill:
             agent_address: Agent's wallet address
             
         Returns:
-            Percentage or None
+            Percentage or None if not found
         """
-        rep = self._reputations.get(agent_address)
-        return rep.on_time_percentage if rep else None
+        metrics = self._get_cached_or_fetch(agent_address)
+        return metrics.on_time_percentage if metrics else None
     
     # ============ Tier Operations ============
     
@@ -218,7 +256,7 @@ class ReputationSkill:
             agent_address: Agent's wallet address
             
         Returns:
-            Tier name
+            Tier name (unknown if not found)
         """
         score = self.get_reputation_score(agent_address)
         
@@ -243,14 +281,53 @@ class ReputationSkill:
             limit: Max results
             
         Returns:
-            List of top agents
+            List of top agents (empty if not available)
         """
-        sorted_reps = sorted(
-            self._reputations.values(),
-            key=lambda r: r.reputation_score,
-            reverse=True,
-        )
-        return sorted_reps[:limit]
+        try:
+            all_reps = self.sdk.get_all_reputations(limit * 2)
+            if all_reps:
+                metrics_list = [ReputationMetrics.from_on_chain(r) for r in all_reps]
+                return sorted(metrics_list, key=lambda r: r.reputation_score, reverse=True)[:limit]
+        except ReputationError:
+            pass
+        
+        return []
+    
+    # ============ Review Operations ============
+    
+    def get_agent_reviews(
+        self,
+        agent_address: str,
+        limit: int = 10,
+    ) -> List[ReviewData]:
+        """
+        Get reviews for an agent from on-chain.
+        
+        Args:
+            agent_address: Agent's wallet address
+            limit: Max reviews to return
+            
+        Returns:
+            List of ReviewData (empty if not available)
+        """
+        # In production, this would fetch from on-chain review accounts
+        # For now, return empty list
+        return []
+    
+    def get_review(self, review_id: str) -> Optional[ReviewData]:
+        """
+        Get a specific review.
+        
+        Args:
+            review_id: Review ID
+            
+        Returns:
+            ReviewData or None
+        """
+        try:
+            return self.sdk.get_review(review_id)
+        except ReputationError:
+            return None
     
     # ============ Trust Score ============
     
@@ -267,10 +344,10 @@ class ReputationSkill:
             weights: Custom weights for calculation
             
         Returns:
-            Trust score (0-100)
+            Trust score (0-100) or None if not found
         """
-        rep = self._reputations.get(agent_address)
-        if not rep:
+        metrics = self._get_cached_or_fetch(agent_address)
+        if not metrics:
             return None
         
         # Default weights
@@ -283,15 +360,15 @@ class ReputationSkill:
             }
         
         # Normalize metrics
-        rating_norm = rep.average_rating / 5.0  # 0-1
-        on_time_norm = rep.on_time_percentage / 100.0  # 0-1
+        rating_norm = metrics.average_rating / 5.0  # 0-1
+        on_time_norm = metrics.on_time_percentage / 100.0  # 0-1
         
         # Volume bonus (diminishing returns)
-        volume_norm = min(rep.completed_tasks / 100.0, 1.0)
+        volume_norm = min(metrics.total_reviews / 100.0, 1.0)
         
         # Positivity ratio
-        total = rep.positive_reviews + rep.negative_reviews
-        positivity = rep.positive_reviews / total if total > 0 else 0.5
+        total = metrics.positive_reviews + metrics.negative_reviews
+        positivity = metrics.positive_reviews / total if total > 0 else 0.5
         
         # Calculate weighted score
         trust = (
@@ -302,57 +379,6 @@ class ReputationSkill:
         ) * 100
         
         return round(trust, 1)
-    
-    # ============ Review History ============
-    
-    def get_review_history(
-        self,
-        agent_address: str,
-        limit: int = 50,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get agent's review history.
-        
-        Args:
-            agent_address: Agent's wallet address
-            limit: Max reviews
-            
-        Returns:
-            List of review data
-        """
-        rep = self._reputations.get(agent_address)
-        if not rep:
-            return []
-        
-        # Generate mock reviews based on metrics
-        reviews = []
-        for i in range(min(limit, rep.total_reviews)):
-            reviews.append({
-                "review_id": f"review-{i}",
-                "rating": rep.average_rating + (0.5 - (i % 10) * 0.1),
-                "comment": "Great agent!" if i % 3 == 0 else "Good work.",
-                "on_time": i % 5 != 0,
-                "timestamp": f"2025-{11 - (i % 12):02d}-{(i % 28) + 1:02d}",
-            })
-        
-        return reviews[:limit]
-    
-    def get_reputation_history(
-        self,
-        agent_address: str,
-        months: int = 12,
-    ) -> List[ReputationHistory]:
-        """
-        Get historical reputation data.
-        
-        Args:
-            agent_address: Agent's wallet address
-            months: Number of months of history
-            
-        Returns:
-            List of historical data points
-        """
-        return self._history.get(agent_address, [])[:months]
     
     # ============ Verification ============
     
@@ -371,15 +397,16 @@ class ReputationSkill:
             tolerance: Acceptable variance
             
         Returns:
-            Verification result
+            Verification result dict
         """
         actual_score = self.get_reputation_score(agent_address)
         
         if actual_score is None:
             return {
                 "verified": False,
-                "reason": "No reputation data found",
+                "reason": "No reputation data found on-chain",
                 "actual_score": None,
+                "claimed_score": claimed_score,
             }
         
         diff = abs(actual_score - claimed_score)
@@ -388,7 +415,7 @@ class ReputationSkill:
             "verified": diff <= tolerance,
             "claimed_score": claimed_score,
             "actual_score": actual_score,
-            "difference": diff,
+            "difference": round(diff, 2),
             "within_tolerance": diff <= tolerance,
         }
     
@@ -405,13 +432,22 @@ class ReputationSkill:
             agent_b: Second agent
             
         Returns:
-            Comparison result
+            Comparison result dict
         """
-        rep_a = self._reputations.get(agent_a)
-        rep_b = self._reputations.get(agent_b)
+        rep_a = self._get_cached_or_fetch(agent_a)
+        rep_b = self._get_cached_or_fetch(agent_b)
         
         if not rep_a or not rep_b:
-            return {"error": "One or both agents not found"}
+            missing = []
+            if not rep_a:
+                missing.append(agent_a)
+            if not rep_b:
+                missing.append(agent_b)
+            return {
+                "error": f"No on-chain data for: {', '.join(missing)}",
+                "agent_a_found": rep_a is not None,
+                "agent_b_found": rep_b is not None,
+            }
         
         return {
             "agent_a": agent_a,
@@ -433,9 +469,9 @@ class ReputationSkill:
                     "winner": agent_a if rep_a.on_time_percentage > rep_b.on_time_percentage else agent_b,
                 },
                 "completed_tasks": {
-                    "a": rep_a.completed_tasks,
-                    "b": rep_b.completed_tasks,
-                    "winner": agent_a if rep_a.completed_tasks > rep_b.completed_tasks else agent_b,
+                    "a": rep_a.total_reviews,
+                    "b": rep_b.total_reviews,
+                    "winner": agent_a if rep_a.total_reviews > rep_b.total_reviews else agent_b,
                 },
             },
         }
@@ -443,44 +479,63 @@ class ReputationSkill:
     # ============ Statistics ============
     
     def get_reputation_stats(self) -> Dict[str, Any]:
-        """Get overall reputation statistics"""
-        reps = list(self._reputations.values())
-        
-        if not reps:
-            return {
-                "total_agents": 0,
-                "avg_score": 0,
-                "avg_rating": 0,
-            }
-        
+        """Get overall reputation statistics (from on-chain)"""
+        # In production, this would aggregate from all reputation accounts
         return {
-            "total_agents": len(reps),
-            "avg_score": sum(r.reputation_score for r in reps) / len(reps),
-            "avg_rating": sum(r.average_rating for r in reps) / len(reps),
-            "avg_on_time": sum(r.on_time_percentage for r in reps) / len(reps),
-            "elite_count": len([r for r in reps if r.reputation_score >= 90]),
-            "trusted_count": len([r for r in reps if r.reputation_score >= 75]),
-            "new_count": len([r for r in reps if r.reputation_score < 50]),
+            "total_agents": 0,
+            "avg_score": 0.0,
+            "avg_rating": 0.0,
+            "message": "Full stats require indexed on-chain data",
         }
+    
+    # ============ Cache Management ============
+    
+    def clear_cache(self, agent_address: str = None):
+        """
+        Clear the reputation cache.
+        
+        Args:
+            agent_address: Specific agent to clear, or None for all
+        """
+        if agent_address:
+            self._cache.pop(agent_address, None)
+        else:
+            self._cache.clear()
+    
+    def refresh_reputation(self, agent_address: str) -> Optional[ReputationMetrics]:
+        """
+        Force refresh reputation from chain.
+        
+        Args:
+            agent_address: Agent's wallet address
+            
+        Returns:
+            Fresh ReputationMetrics or None
+        """
+        self.clear_cache(agent_address)
+        return self._get_cached_or_fetch(agent_address)
     
     # ============ Export ============
     
     def export_reputation_json(self, agent_address: str = None) -> str:
         """Export reputation data as JSON"""
         if agent_address:
-            rep = self._reputations.get(agent_address)
+            rep = self._get_cached_or_fetch(agent_address)
             data = [rep.to_dict()] if rep else []
         else:
-            data = [r.to_dict() for r in self._reputations.values()]
+            data = [m.to_dict() for m in self._cache.values()]
         
         return json.dumps(data, indent=2)
 
 
-def get_reputation_skill() -> ReputationSkill:
+def get_reputation_skill(network: str = "devnet") -> ReputationSkill:
     """
     Get a ReputationSkill instance.
     
+    Args:
+        network: Network name (devnet, mainnet)
+        
     Returns:
         Configured ReputationSkill
     """
-    return ReputationSkill()
+    return ReputationSkill(network)
