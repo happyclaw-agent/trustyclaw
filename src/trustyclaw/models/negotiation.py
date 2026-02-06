@@ -59,9 +59,13 @@ class AutoAcceptCriteria:
         has_deposit: bool,
     ) -> bool:
         """Determine if a mandate should be auto-accepted"""
-        # Check blocked clients
+        # Check blocked clients first
         if client_address in self.blocked_clients:
             return False
+        
+        # Check trusted clients override - trusted clients bypass other checks
+        if client_address in self.trusted_clients:
+            return True
         
         # Check price range
         if price_usdc < self.min_price_usdc:
@@ -84,10 +88,6 @@ class AutoAcceptCriteria:
             return False
         if self.require_deposit and not has_deposit:
             return False
-        
-        # Check trusted clients override
-        if client_address in self.trusted_clients:
-            return True
         
         return True
     
@@ -137,8 +137,8 @@ class PriceNegotiationRules:
         """Check if a counter-offer is acceptable"""
         min_price, max_price = self.get_acceptable_range(base_price)
         
-        # Check counter count
-        if counter_number > self.max_counter_offers:
+        # Check counter count (max_counter_offers means 0 to max_counter_offers-1 are valid)
+        if counter_number >= self.max_counter_offers:
             return False
         
         # Check if counter is within range

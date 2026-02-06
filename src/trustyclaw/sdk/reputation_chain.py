@@ -15,8 +15,8 @@ import base64
 try:
     from solana.rpc.api import Client as SolanaClient
     from solana.rpc.commitment import Confirmed, Finalized
-    from solana.keypair import Keypair
-    from solana.publickey import PublicKey
+    from solders.keypair import Keypair
+    from solders.pubkey import Pubkey
     from solana.transaction import Transaction
     from solders.pubkey import Pubkey as SoldersPubkey
     from anchorpy import Program, Provider, Wallet

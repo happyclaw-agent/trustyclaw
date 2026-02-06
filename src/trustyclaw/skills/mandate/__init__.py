@@ -5,11 +5,14 @@ Skill rental agreement management with autonomous features.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any, Callable
+from typing import Optional, Dict, List, Any, Callable, TYPE_CHECKING
 from datetime import datetime, timedelta
 from enum import Enum
 import uuid
 import json
+
+if TYPE_CHECKING:
+    from src.trustyclaw.skills.mandate import Mandate
 
 
 class MandateStatus(Enum):
