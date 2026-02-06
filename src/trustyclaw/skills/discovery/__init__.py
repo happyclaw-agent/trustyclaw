@@ -528,6 +528,219 @@ class DiscoverySkill:
             "categories": len(set(s.category for s in skills)),
         }
     
+    # ============ Auto-Negotiating Agents ============
+    
+    def get_auto_negotiating_agents(
+        self,
+        skill_category: str = None,
+        min_rating: float = 0.0,
+        max_price: int = None,
+        limit: int = 20,
+    ) -> List[Agent]:
+        """
+        Get agents that support auto-negotiation.
+        
+        Args:
+            skill_category: Filter by skill category
+            min_rating: Minimum rating filter
+            max_price: Maximum average price filter
+            limit: Max results
+            
+        Returns:
+            List of auto-negotiating agents
+        """
+        from trustyclaw.skills.agent_registration import get_agent_registration_skill
+        
+        registration_skill = get_agent_registration_skill()
+        registrations = registration_skill.list_registrations(
+            auto_negotiating_only=True,
+            status="active",
+        )
+        
+        # Get addresses of auto-negotiating agents
+        auto_negotiating_addresses = {
+            r.agent_address for r in registrations
+        }
+        
+        # Filter agents
+        agents = list(self._agents.values())
+        auto_agents = [
+            a for a in agents
+            if a.address in auto_negotiating_addresses
+        ]
+        
+        # Apply skill category filter
+        if skill_category:
+            auto_agents = [
+                a for a in auto_agents
+                if any(s.category == skill_category for s in a.skills)
+            ]
+        
+        # Apply rating filter
+        if min_rating > 0:
+            auto_agents = [a for a in auto_agents if a.rating >= min_rating]
+        
+        # Apply price filter
+        if max_price:
+            auto_agents = [
+                a for a in auto_agents
+                if min([s.price_per_task for s in a.skills] or [float('inf')]) <= max_price
+            ]
+        
+        # Sort by rating
+        auto_agents.sort(key=lambda a: a.rating, reverse=True)
+        
+        return auto_agents[:limit]
+    
+    def get_auto_accept_agents(
+        self,
+        max_mandate_value: int = None,
+        skill_category: str = None,
+        limit: int = 20,
+    ) -> List[Agent]:
+        """
+        Get agents that auto-accept mandates within certain criteria.
+        
+        Args:
+            max_mandate_value: Filter by max mandate value (lamports)
+            skill_category: Filter by skill category
+            limit: Max results
+            
+        Returns:
+            List of auto-accept agents
+        """
+        from trustyclaw.skills.agent_registration import get_agent_registration_skill
+        
+        registration_skill = get_agent_registration_skill()
+        registrations = registration_skill.list_registrations(
+            auto_negotiating_only=True,
+            status="active",
+        )
+        
+        auto_accept_addresses = set()
+        for r in registrations:
+            if r.negotiation_rules:
+                strategy = r.negotiation_rules.strategy
+                # Check if strategy is auto-accept
+                if "AUTO" in str(strategy).upper():
+                    auto_accept_addresses.add(r.agent_address)
+        
+        # Filter agents
+        agents = list(self._agents.values())
+        auto_accept_agents = [
+            a for a in agents
+            if a.address in auto_accept_addresses
+        ]
+        
+        # Apply filters
+        if skill_category:
+            auto_accept_agents = [
+                a for a in auto_accept_agents
+                if any(s.category == skill_category for s in a.skills)
+            ]
+        
+        # Sort by rating
+        auto_accept_agents.sort(key=lambda a: a.rating, reverse=True)
+        
+        return auto_accept_agents[:limit]
+    
+    def search_auto_negotiating_skills(
+        self,
+        query: str = None,
+        category: str = None,
+        min_rating: float = 0.0,
+        max_price: int = None,
+        limit: int = 20,
+    ) -> List[Skill]:
+        """
+        Search for skills from auto-negotiating agents.
+        
+        Args:
+            query: Search query
+            category: Filter by category
+            min_rating: Minimum rating
+            max_price: Maximum price
+            limit: Max results
+            
+        Returns:
+            List of skills from auto-negotiating agents
+        """
+        from trustyclaw.skills.agent_registration import get_agent_registration_skill
+        
+        registration_skill = get_agent_registration_skill()
+        registrations = registration_skill.list_registrations(
+            auto_negotiating_only=True,
+            status="active",
+        )
+        
+        auto_negotiating_addresses = {
+            r.agent_address for r in registrations
+        }
+        
+        # Get skills from auto-negotiating agents
+        skills = [
+            s for s in self._skills.values()
+            if s.agent_address in auto_negotiating_addresses
+        ]
+        
+        # Apply filters
+        if query:
+            query_lower = query.lower()
+            skills = [
+                s for s in skills
+                if query_lower in s.name.lower()
+                or query_lower in s.description.lower()
+                or any(query_lower in t.lower() for t in s.tags)
+            ]
+        
+        if category:
+            skills = [s for s in skills if s.category == category]
+        
+        if min_rating > 0:
+            skills = [s for s in skills if s.rating >= min_rating]
+        
+        if max_price:
+            skills = [s for s in skills if s.price_per_task <= max_price]
+        
+        return sorted(skills, key=lambda s: s.rating, reverse=True)[:limit]
+    
+    def get_negotiation_info(self, agent_address: str) -> Dict[str, Any]:
+        """
+        Get negotiation capabilities for an agent.
+        
+        Args:
+            agent_address: Agent address
+            
+        Returns:
+            Dict with negotiation info
+        """
+        from trustyclaw.skills.agent_registration import get_agent_registration_skill
+        
+        registration_skill = get_agent_registration_skill()
+        registration = registration_skill.get_registration(agent_address)
+        
+        if not registration:
+            return {
+                "auto_negotiation": False,
+                "message": "Agent not registered for auto-negotiation",
+            }
+        
+        rules = registration.negotiation_rules
+        if not rules:
+            return {
+                "auto_negotiation": False,
+                "message": "No negotiation rules configured",
+            }
+        
+        return {
+            "auto_negotiation": True,
+            "strategy": str(rules.strategy.value),
+            "auto_accept_mandates": registration.capabilities.auto_accept_mandates,
+            "max_mandate_value": registration.capabilities.max_mandate_value,
+            "price_negotiation": str(rules.price_rules.strategy.value) if rules.price_rules else None,
+            "response_delay_seconds": rules.auto_response_delay_seconds,
+        }
+    
     # ============ Export ============
     
     def export_agents_json(self, agent_address: str = None) -> str:

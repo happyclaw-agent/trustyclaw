@@ -13,6 +13,7 @@ Modules:
 - reputation_chain: On-chain reputation storage
 - review_system: Full review lifecycle management
 - escrow_contract: Secure payment escrow
+- matching: ML-based agent-skill matching engine
 """
 
 from .client import SolanaClient
@@ -21,6 +22,15 @@ from .reputation import ReputationEngine, Review, ReputationScore
 from .escrow import EscrowClient, EscrowTerms, EscrowState
 from .solana import SolanaRPCClient, WalletInfo, TransactionInfo, get_client
 from .usdc import USDCClient, TokenAccount, TransferResult, get_usdc_client
+<<<<<<< HEAD
+=======
+from .keypair import (
+    KeypairManager,
+    KeypairError,
+    WalletInfo as KeypairWalletInfo,
+    get_keypair_manager,
+)
+>>>>>>> main
 from .cross_chain import (
     CrossChainBridge,
     BridgeTransaction,
@@ -57,7 +67,18 @@ from .escrow_contract import (
     Escrow,
     EscrowTerms,
     EscrowState,
-    get_escrow_client,
+row_client,
+)
+    get_escfrom .matching import (
+    MatchingEngine,
+    TaskRequirements,
+    RenterHistory,
+    AgentRecommendation,
+    SkillMatch,
+    PricePrediction,
+    TimeEstimate,
+    DemandForecast,
+    get_matching_engine,
 )
 
 __all__ = [
@@ -78,6 +99,13 @@ __all__ = [
     "TokenAccount",
     "TransferResult",
     "get_usdc_client",
+<<<<<<< HEAD
+=======
+    "KeypairManager",
+    "KeypairError",
+    "KeypairWalletInfo",
+    "get_keypair_manager",
+>>>>>>> main
     "CrossChainBridge",
     "BridgeTransaction",
     "BridgeStatus",
@@ -105,6 +133,15 @@ __all__ = [
     "EscrowTerms",
     "EscrowState",
     "get_escrow_client",
+    "MatchingEngine",
+    "TaskRequirements",
+    "RenterHistory",
+    "AgentRecommendation",
+    "SkillMatch",
+    "PricePrediction",
+    "TimeEstimate",
+    "DemandForecast",
+    "get_matching_engine",
 ]
 
 __version__ = "0.1.0"

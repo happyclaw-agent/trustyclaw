@@ -12,10 +12,23 @@ import base64
 import time
 import hashlib
 
+<<<<<<< HEAD
 from solana.rpc.api import Client as SolanaClient
 from solana.rpc.commitment import Confirmed, Finalized
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
+=======
+try:
+    from solana.rpc.api import Client as SolanaClient
+    from solana.rpc.commitment import Confirmed, Finalized
+    from solders.keypair import Keypair
+    from solders.pubkey import Pubkey
+    HAS_SOLANA = True
+except ImportError:
+    HAS_SOLANA = False
+    Keypair = None
+    Pubkey = None
+>>>>>>> main
 
 
 class TokenError(Exception):
@@ -81,14 +94,20 @@ class USDCClient:
         else:
             self.mint = self.MAINNET_MINT
         
-        self.client = SolanaClient(f"https://api.{network}.solana.com")
+        if HAS_SOLANA:
+            self.client = SolanaClient(f"https://api.{network}.solana.com")
+        else:
+            self.client = None
         
-        self._keypair: Optional[Keypair] = None
-        if keypair_path and os.path.exists(keypair_path):
+        self._keypair: Optional[Any] = None
+        if keypair_path and os.path.exists(keypair_path) and HAS_SOLANA:
             self._load_keypair(keypair_path)
     
     def _load_keypair(self, path: str) -> None:
         """Load keypair from file"""
+        if not HAS_SOLANA:
+            return
+            
         with open(path, 'rb') as f:
             keypair_data = f.read()
         
@@ -102,37 +121,49 @@ class USDCClient:
     def address(self) -> Optional[str]:
         """Get loaded keypair address"""
         if self._keypair:
-            return str(self._keypair.publickey)
+            return str(self._keypair.pubkey())
         return None
     
     def get_balance(self, wallet_address: str) -> float:
         """Get USDC balance for a wallet"""
-        resp = self.client.get_token_accounts_by_owner(
-            wallet_address,
-            {"mint": self.mint},
-            encoding="jsonParsed",
-            commitment=self.commitment,
-        )
+        if not self.client:
+            return 0.0
         
-        if resp.value and len(resp.value) > 0:
-            account_data = resp.value[0].account.data
-            if isinstance(account_data, dict):
-                info = account_data.get('parsed', {}).get('info', {})
-                return float(info.get('tokenAmount', {}).get('uiAmount', 0))
+        try:
+            resp = self.client.get_token_accounts_by_owner(
+                wallet_address,
+                {"mint": self.mint},
+                encoding="jsonParsed",
+                commitment=self.commitment,
+            )
+            
+            if resp.value and len(resp.value) > 0:
+                account_data = resp.value[0].account.data
+                if isinstance(account_data, dict):
+                    info = account_data.get('parsed', {}).get('info', {})
+                    return float(info.get('tokenAmount', {}).get('uiAmount', 0))
+        except:
+            pass
         
         return 0.0
     
     def find_associated_token_account(self, wallet_address: str) -> Optional[str]:
         """Find the associated token account for a wallet"""
-        resp = self.client.get_token_accounts_by_owner(
-            wallet_address,
-            {"mint": self.mint},
-            encoding="jsonParsed",
-            commitment=self.commitment,
-        )
+        if not self.client:
+            return None
         
-        if resp.value and len(resp.value) > 0:
-            return str(resp.value[0].pubkey)
+        try:
+            resp = self.client.get_token_accounts_by_owner(
+                wallet_address,
+                {"mint": self.mint},
+                encoding="jsonParsed",
+                commitment=self.commitment,
+            )
+            
+            if resp.value and len(resp.value) > 0:
+                return str(resp.value[0].pubkey)
+        except:
+            pass
         
         return None
     
@@ -143,32 +174,38 @@ class USDCClient:
         amount: float,
     ) -> TransferResult:
         """Transfer USDC between wallets"""
-        source_resp = self.client.get_token_accounts_by_owner(
-            from_wallet,
-            {"mint": self.mint},
-            encoding="jsonParsed",
-        )
+        if not self.client:
+            raise TokenError("No client available")
         
-        if not source_resp.value:
-            raise TokenError("Source wallet has no USDC token account")
-        
-        source_account = str(source_resp.value[0].pubkey)
-        
-        dest_resp = self.client.get_token_accounts_by_owner(
-            to_wallet,
-            {"mint": self.mint},
-            encoding="jsonParsed",
-        )
-        
-        dest_account = str(dest_resp.value[0].pubkey) if dest_resp.value else f"ata-{to_wallet[:8]}-{self.mint[:8]}"
-        
-        return TransferResult(
-            signature=f"transfer-{source_account[:8]}-{dest_account[:8]}",
-            status=TransferStatus.CONFIRMED,
-            source_account=source_account,
-            destination_account=dest_account,
-            amount=amount,
-        )
+        try:
+            source_resp = self.client.get_token_accounts_by_owner(
+                from_wallet,
+                {"mint": self.mint},
+                encoding="jsonParsed",
+            )
+            
+            if not source_resp.value:
+                raise TokenError("Source wallet has no USDC token account")
+            
+            source_account = str(source_resp.value[0].pubkey)
+            
+            dest_resp = self.client.get_token_accounts_by_owner(
+                to_wallet,
+                {"mint": self.mint},
+                encoding="jsonParsed",
+            )
+            
+            dest_account = str(dest_resp.value[0].pubkey) if dest_resp.value else f"ata-{to_wallet[:8]}-{self.mint[:8]}"
+            
+            return TransferResult(
+                signature=f"transfer-{source_account[:8]}-{dest_account[:8]}",
+                status=TransferStatus.CONFIRMED,
+                source_account=source_account,
+                destination_account=dest_account,
+                amount=amount,
+            )
+        except Exception as e:
+            raise TokenError(f"Transfer failed: {e}")
     
     def decimals(self) -> int:
         """Get USDC decimals (always 6)"""

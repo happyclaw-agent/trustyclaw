@@ -5,14 +5,11 @@ Skill rental agreement management with autonomous features.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any, Callable, TYPE_CHECKING
+from typing import Optional, Dict, List, Any, Callable
 from datetime import datetime, timedelta
 from enum import Enum
 import uuid
 import json
-
-if TYPE_CHECKING:
-    pass
 
 
 class MandateStatus(Enum):
@@ -43,72 +40,6 @@ class ResolutionType(Enum):
     AUTO = "auto"           # Automated resolution using reputation
     COMMUNITY = "community"  # Community voting
     ESCALATED = "escalated"  # Manual escalation required
-
-
-@dataclass
-class MandateTerms:
-    """Terms of the mandate agreement"""
-    skill_id: str
-    amount: int  # USDC lamports
-    duration_hours: int
-    deliverables: List[str]
-    requirements: List[str] = field(default_factory=list)
-    revisions: int = 0  # Number of free revisions
-    exclusivity: bool = False  # Exclusive use during mandate
-    confidentiality: bool = True
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "skill_id": self.skill_id,
-            "amount": self.amount,
-            "duration_hours": self.duration_hours,
-            "deliverables": self.deliverables,
-            "requirements": self.requirements,
-            "revisions": self.revisions,
-            "exclusivity": self.exclusivity,
-            "confidentiality": self.confidentiality,
-        }
-
-
-@dataclass
-class Mandate:
-    """Complete mandate record"""
-    mandate_id: str
-    provider: str
-    renter: str
-    terms: MandateTerms
-    status: MandateStatus = MandateStatus.DRAFT
-    escrow_id: Optional[str] = None
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    accepted_at: Optional[str] = None
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    deadline: Optional[str] = None
-    extended_deadline: Optional[str] = None
-    revision_count: int = 0
-    deliverable_hash: Optional[str] = None
-    renter_rating: Optional[int] = None
-    provider_rating: Optional[int] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "mandate_id": self.mandate_id,
-            "provider": self.provider,
-            "renter": self.renter,
-            "terms": self.terms.to_dict(),
-            "status": self.status.value,
-            "escrow_id": self.escrow_id,
-            "created_at": self.created_at,
-            "accepted_at": self.accepted_at,
-            "started_at": self.started_at,
-            "completed_at": self.completed_at,
-            "deadline": self.deadline,
-            "extended_deadline": self.extended_deadline,
-            "revision_count": self.revision_count,
-            "deliverable_hash": self.deliverable_hash,
-            "renter_rating": self.renter_rating,
-            "provider_rating": self.provider_rating,
-        }
 
 
 @dataclass
@@ -182,6 +113,72 @@ class Resolution:
             "votes_for": self.votes_for,
             "votes_against": self.votes_against,
             "timestamp": self.timestamp,
+        }
+
+
+@dataclass
+class MandateTerms:
+    """Terms of the mandate agreement"""
+    skill_id: str
+    amount: int  # USDC lamports
+    duration_hours: int
+    deliverables: List[str]
+    requirements: List[str] = field(default_factory=list)
+    revisions: int = 0  # Number of free revisions
+    exclusivity: bool = False  # Exclusive use during mandate
+    confidentiality: bool = True
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "amount": self.amount,
+            "duration_hours": self.duration_hours,
+            "deliverables": self.deliverables,
+            "requirements": self.requirements,
+            "revisions": self.revisions,
+            "exclusivity": self.exclusivity,
+            "confidentiality": self.confidentiality,
+        }
+
+
+@dataclass
+class Mandate:
+    """Complete mandate record"""
+    mandate_id: str
+    provider: str
+    renter: str
+    terms: MandateTerms
+    status: MandateStatus = MandateStatus.DRAFT
+    escrow_id: Optional[str] = None
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    accepted_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    deadline: Optional[str] = None
+    extended_deadline: Optional[str] = None
+    revision_count: int = 0
+    deliverable_hash: Optional[str] = None
+    renter_rating: Optional[int] = None
+    provider_rating: Optional[int] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "mandate_id": self.mandate_id,
+            "provider": self.provider,
+            "renter": self.renter,
+            "terms": self.terms.to_dict(),
+            "status": self.status.value,
+            "escrow_id": self.escrow_id,
+            "created_at": self.created_at,
+            "accepted_at": self.accepted_at,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "deadline": self.deadline,
+            "extended_deadline": self.extended_deadline,
+            "revision_count": self.revision_count,
+            "deliverable_hash": self.deliverable_hash,
+            "renter_rating": self.renter_rating,
+            "provider_rating": self.provider_rating,
         }
 
 

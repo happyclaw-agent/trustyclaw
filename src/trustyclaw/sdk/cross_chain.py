@@ -11,6 +11,10 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import os
 import hashlib
+<<<<<<< HEAD
+=======
+import hmac
+>>>>>>> main
 
 
 class Chain(Enum):
@@ -350,13 +354,21 @@ class CrossChainBridge:
                 wormhole_vaa=f"vaa_{tx_id[:32]}",
             )
             
+<<<<<<< HEAD
             # Simulate completion
+=======
+            # Simulate completion after short delay
+>>>>>>> main
             tx.status = BridgeStatus.COMPLETED
             
             self._pending_transactions[tx_id] = tx
             return tx
         
         # Mainnet: Would interact with real Wormhole contracts
+<<<<<<< HEAD
+=======
+        # This is a placeholder for actual implementation
+>>>>>>> main
         tx = BridgeTransaction(
             transaction_id=tx_id,
             source_chain=source_chain,
