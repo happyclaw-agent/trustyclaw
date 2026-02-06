@@ -8,9 +8,12 @@ Modules:
 - escrow: Escrow contract interface
 - solana: Real Solana blockchain integration
 - usdc: USDC SPL Token integration
+- cross_chain: Cross-chain bridge service
+- unified_balance: Unified balance API
 - reputation_chain: On-chain reputation storage
 - review_system: Full review lifecycle management
 - escrow_contract: Secure payment escrow
+- matching: ML-based agent-skill matching engine
 """
 
 from .client import SolanaClient
@@ -19,6 +22,29 @@ from .reputation import ReputationEngine, Review, ReputationScore
 from .escrow import EscrowClient, EscrowTerms, EscrowState
 from .solana import SolanaRPCClient, WalletInfo, TransactionInfo, get_client
 from .usdc import USDCClient, TokenAccount, TransferResult, get_usdc_client
+from .keypair import (
+    KeypairManager,
+    KeypairError,
+    WalletInfo as KeypairWalletInfo,
+    get_keypair_manager,
+)
+from .cross_chain import (
+    CrossChainBridge,
+    BridgeTransaction,
+    BridgeStatus,
+    BridgeQuote,
+    Chain,
+    get_bridge_client,
+)
+from .unified_balance import (
+    UnifiedBalance,
+    UnionWallet,
+    ChainBalance,
+    AggregatedBalance,
+    Chain,
+    Token,
+    get_unified_balance,
+)
 from .reputation_chain import (
     ReputationPDAProgram,
     ReputationScoreData,
@@ -38,7 +64,18 @@ from .escrow_contract import (
     Escrow,
     EscrowTerms,
     EscrowState,
-    get_escrow_client,
+row_client,
+)
+    get_escfrom .matching import (
+    MatchingEngine,
+    TaskRequirements,
+    RenterHistory,
+    AgentRecommendation,
+    SkillMatch,
+    PricePrediction,
+    TimeEstimate,
+    DemandForecast,
+    get_matching_engine,
 )
 
 __all__ = [
@@ -59,6 +96,22 @@ __all__ = [
     "TokenAccount",
     "TransferResult",
     "get_usdc_client",
+    "KeypairManager",
+    "KeypairError",
+    "KeypairWalletInfo",
+    "get_keypair_manager",
+    "CrossChainBridge",
+    "BridgeTransaction",
+    "BridgeStatus",
+    "BridgeQuote",
+    "Chain",
+    "get_bridge_client",
+    "UnifiedBalance",
+    "UnionWallet",
+    "ChainBalance",
+    "AggregatedBalance",
+    "Token",
+    "get_unified_balance",
     "ReputationPDAProgram",
     "ReputationScoreData",
     "ReviewData",
@@ -74,6 +127,15 @@ __all__ = [
     "EscrowTerms",
     "EscrowState",
     "get_escrow_client",
+    "MatchingEngine",
+    "TaskRequirements",
+    "RenterHistory",
+    "AgentRecommendation",
+    "SkillMatch",
+    "PricePrediction",
+    "TimeEstimate",
+    "DemandForecast",
+    "get_matching_engine",
 ]
 
 __version__ = "0.1.0"

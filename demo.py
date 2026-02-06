@@ -2,7 +2,7 @@
 """
 TrustyClaw Demo Application
 
-End-to-end demonstration of TrustyClaw features.
+End-to-end demonstration of TrustyClaw features with real USDC operations.
 """
 
 import sys
@@ -61,18 +61,68 @@ def demo_solana():
 
 
 def demo_usdc():
-    """Demo USDC integration"""
-    print_header("USDC TOKEN INTEGRATION")
+    """Demo USDC integration with real signing"""
+    print_header("USDC TOKEN INTEGRATION (REAL SIGNING)")
     
     usdc = get_usdc_client("devnet")
     
     print_section("Token Info")
     print(f"Network: {usdc.network}")
     print(f"USDC Mint: {usdc.mint[:16]}...")
+    print(f"Endpoint: {usdc.endpoint}")
+    
+    print_section("Client Status")
+    if usdc._keypair:
+        print(f"Keypair Loaded: Yes ({usdc.address[:16]}...)")
+    else:
+        print("Keypair Loaded: No (using mock mode)")
+        print("Set SOLANA_KEYPAIR_PATH for real transactions")
     
     print_section("Provider USDC Balance")
     balance = usdc.get_balance(PROVIDER_WALLET)
     print(f"Balance: {balance:,.2f} USDC")
+    
+    print_section("Renter USDC Balance")
+    balance = usdc.get_balance(RENTER_WALLET)
+    print(f"Balance: {balance:,.2f} USDC")
+    
+    print_section("Token Account Discovery")
+    provider_ata = usdc.find_associated_token_account(PROVIDER_WALLET)
+    print(f"Provider ATA: {provider_ata or 'None'}")
+    
+    renter_ata = usdc.find_associated_token_account(RENTER_WALLET)
+    print(f"Renter ATA: {renter_ata or 'None'}")
+    
+    # Real transfer demo (only if keypair available)
+    if usdc._keypair:
+        print_section("Real USDC Transfer")
+        print("Signing with loaded keypair...")
+        
+        result = usdc.transfer(
+            from_wallet=PROVIDER_WALLET,
+            to_wallet=RENTER_WALLET,
+            amount=0.01,  # Small amount for demo
+        )
+        
+        print(f"Transaction Signature: {result.signature}")
+        print(f"Status: {result.status.value}")
+        print(f"Explorer: {result.explorer_url}")
+        print(f"Amount: {result.amount} USDC")
+        print(f"From: {result.source_account[:16]}...")
+        print(f"To: {result.destination_account[:16]}...")
+    else:
+        print_section("Transfer Demo (Mock Mode)")
+        print("Set SOLANA_KEYPAIR_PATH to enable real transfers")
+        
+        result = usdc.transfer(
+            from_wallet=PROVIDER_WALLET,
+            to_wallet=RENTER_WALLET,
+            amount=1.0,
+        )
+        
+        print(f"Transaction Signature: {result.signature}")
+        print(f"Status: {result.status.value}")
+        print(f"Explorer: {result.explorer_url}")
 
 
 def demo_escrow():
@@ -298,6 +348,13 @@ def main():
     print(f"  {now.isoformat()}")
     print(f"{'='*60}")
     
+    # Check for keypair
+    import os
+    if os.environ.get("SOLANA_KEYPAIR_PATH"):
+        print("\n✓ Real USDC signing enabled (SOLANA_KEYPAIR_PATH set)")
+    else:
+        print("\n⚠ Mock mode - Set SOLANA_KEYPAIR_PATH for real transactions")
+    
     # Run all demos
     demo_solana()
     demo_usdc()
@@ -314,7 +371,7 @@ def main():
     
     print("TrustyClaw Features Demonstrated:")
     print("  ✓ Solana blockchain integration")
-    print("  ✓ USDC token handling")
+    print("  ✓ USDC token handling with real signing")
     print("  ✓ Escrow contract management")
     print("  ✓ Review submission and aggregation")
     print("  ✓ Mandate lifecycle")
