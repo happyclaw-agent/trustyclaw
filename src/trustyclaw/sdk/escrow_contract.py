@@ -654,23 +654,17 @@ def get_escrow_client(
         network=network,
     )
 
-<<<<<<< HEAD
-=======
 
->>>>>>> main
 # ============ USDC Payment Service Integration ============
 
     def get_payment_service(self) -> 'USDCPaymentService':
         """
         Get the USDC Payment Service for this escrow.
-<<<<<<< HEAD
-=======
         
         Creates or returns cached payment service.
         
         Returns:
             USDCPaymentService instance
->>>>>>> main
         """
         if not hasattr(self, '_payment_service'):
             from .usdc_payment import USDCPaymentService
@@ -684,18 +678,12 @@ def get_escrow_client(
         self,
         provider: str,
         renter: str,
-<<<<<<< HEAD
-        amount: int,
-=======
         amount: int,  # microUSDC
->>>>>>> main
         description: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> 'PaymentIntent':
         """
         Create a payment intent for escrow.
-<<<<<<< HEAD
-=======
         
         Creates a payment intent that will be tracked alongside escrow.
         
@@ -708,7 +696,6 @@ def get_escrow_client(
             
         Returns:
             PaymentIntent object
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -731,8 +718,6 @@ def get_escrow_client(
     ) -> 'EscrowPayment':
         """
         Track an escrow payment.
-<<<<<<< HEAD
-=======
         
         Associates a payment intent with an escrow.
         
@@ -742,7 +727,6 @@ def get_escrow_client(
             
         Returns:
             EscrowPayment object
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -771,8 +755,6 @@ def get_escrow_client(
     ) -> 'PaymentResult':
         """
         Execute payment with confirmation tracking.
-<<<<<<< HEAD
-=======
         
         Executes a payment intent and waits for confirmation.
         
@@ -782,7 +764,6 @@ def get_escrow_client(
             
         Returns:
             PaymentResult with confirmation status
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -790,11 +771,7 @@ def get_escrow_client(
         
         if not result.success and max_retries > 0:
             import time
-<<<<<<< HEAD
-            time.sleep(1)
-=======
             time.sleep(1)  # Brief delay
->>>>>>> main
             return self.execute_payment_with_confirmation(
                 payment_intent_id,
                 max_retries=max_retries - 1,
@@ -805,8 +782,6 @@ def get_escrow_client(
     def get_escrow_payment_status(self, escrow_address: str) -> Dict[str, Any]:
         """
         Get full payment status for an escrow.
-<<<<<<< HEAD
-=======
         
         Returns combined status from escrow and payment service.
         
@@ -815,7 +790,6 @@ def get_escrow_client(
             
         Returns:
             Dict with escrow and payment status
->>>>>>> main
         """
         escrow = self.get_escrow(escrow_address)
         if not escrow:
@@ -851,8 +825,6 @@ def get_escrow_client(
     ) -> 'BalanceNotification':
         """
         Setup balance notification for a wallet.
-<<<<<<< HEAD
-=======
         
         Args:
             wallet_address: Wallet to monitor
@@ -863,7 +835,6 @@ def get_escrow_client(
             
         Returns:
             BalanceNotification object
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -878,15 +849,12 @@ def get_escrow_client(
     def check_and_reload_balance(self, wallet_address: str) -> Dict[str, Any]:
         """
         Check balance and trigger auto-reload if needed.
-<<<<<<< HEAD
-=======
         
         Args:
             wallet_address: Wallet to check
             
         Returns:
             Check result with any auto-reload action
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -899,8 +867,6 @@ def get_escrow_client(
     ) -> List['Payment']:
         """
         Get payment history for a wallet.
-<<<<<<< HEAD
-=======
         
         Args:
             wallet_address: Wallet to query
@@ -908,7 +874,6 @@ def get_escrow_client(
             
         Returns:
             List of Payment records
->>>>>>> main
         """
         payment_service = self.get_payment_service()
         
@@ -928,8 +893,6 @@ def get_escrow_with_payment_service(
 ) -> EscrowClient:
     """
     Get an EscrowClient with payment service configured.
-<<<<<<< HEAD
-=======
     
     Args:
         program_id: Optional program ID override
@@ -939,17 +902,13 @@ def get_escrow_with_payment_service(
         
     Returns:
         Configured EscrowClient
->>>>>>> main
     """
     client = EscrowClient(
         program_id=program_id,
         network=network,
     )
     
-<<<<<<< HEAD
-=======
     # Configure payment service
->>>>>>> main
     from .usdc_payment import USDCPaymentService, MultisigConfig
     payment_service = client.get_payment_service()
     
@@ -962,10 +921,7 @@ def get_escrow_with_payment_service(
     payment_service.set_multisig_config(multisig_config)
     
     return client
-<<<<<<< HEAD
-=======
 
 
 # Constants
 SYS_PROGRAM_ID = Pubkey.from_string("11111111111111111111111111111111")
->>>>>>> main

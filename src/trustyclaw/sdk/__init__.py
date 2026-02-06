@@ -22,15 +22,12 @@ from .reputation import ReputationEngine, Review, ReputationScore
 from .escrow import EscrowClient, EscrowTerms, EscrowState
 from .solana import SolanaRPCClient, WalletInfo, TransactionInfo, get_client
 from .usdc import USDCClient, TokenAccount, TransferResult, get_usdc_client
-<<<<<<< HEAD
-=======
 from .keypair import (
     KeypairManager,
     KeypairError,
     WalletInfo as KeypairWalletInfo,
     get_keypair_manager,
 )
->>>>>>> main
 from .cross_chain import (
     CrossChainBridge,
     BridgeTransaction,
@@ -67,9 +64,9 @@ from .escrow_contract import (
     Escrow,
     EscrowTerms,
     EscrowState,
-row_client,
+    get_escrow_client,
 )
-    get_escfrom .matching import (
+from .matching import (
     MatchingEngine,
     TaskRequirements,
     RenterHistory,
@@ -99,13 +96,10 @@ __all__ = [
     "TokenAccount",
     "TransferResult",
     "get_usdc_client",
-<<<<<<< HEAD
-=======
     "KeypairManager",
     "KeypairError",
     "KeypairWalletInfo",
     "get_keypair_manager",
->>>>>>> main
     "CrossChainBridge",
     "BridgeTransaction",
     "BridgeStatus",
