@@ -170,6 +170,10 @@ def demo_escrow():
     funded = escrow.fund_escrow(new_escrow.escrow_id)
     print(f"State: {funded.state.value}")
     
+    print_section("Activate Escrow")
+    active = escrow.activate_escrow(new_escrow.escrow_id)
+    print(f"State: {active.state.value}")
+    
     print_section("Complete Escrow")
     completed = escrow.complete_escrow(new_escrow.escrow_id, "final-hash")
     print(f"State: {completed.state.value}")
