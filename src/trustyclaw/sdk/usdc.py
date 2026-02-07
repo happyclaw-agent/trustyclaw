@@ -77,6 +77,7 @@ class USDCClient:
         keypair_path: Optional[str] = None,
     ):
         self.network = network
+        self.endpoint = f"https://api.{network}.solana.com"
         self.commitment = "confirmed"
         
         if network == "devnet":
