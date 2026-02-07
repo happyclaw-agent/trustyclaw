@@ -24,6 +24,16 @@ USE_MOCK = args.mock or not args.onchain
 
 if USE_MOCK:
     print("⚠ Mock mode - Use --onchain for real on-chain operations")
+elif not args.onchain:
+    print("⚠ Mock mode (default) - Anchor programs not yet deployed")
+else:
+    # --onchain mode - check for required deps
+    try:
+        from anchorpy import Program
+        print("✓ On-chain mode - Anchor detected")
+    except ImportError:
+        print("⚠ On-chain mode but Anchor not installed - falling back to mock")
+        USE_MOCK = True
 
 # Add src to path
 sys.path.insert(0, 'src')
