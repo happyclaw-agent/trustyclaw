@@ -16,12 +16,12 @@ import os
 from datetime import datetime, timezone
 
 # Parse arguments
-parser = argparse.ArgumentParser(description='TrustyClaw Demo')
-parser.add_argument('--mock', action='store_true', default=True, help='Use mock mode (default)')
-parser.add_argument('--onchain', action='store_true', help='Use real on-chain contracts (REQUIRES anchor programs deployed)')
+parser = argparse.ArgumentParser(description='TrustyClaw Demo', allow_abbrev=True)
+parser.add_argument('--mock', action='store_true', default=False, help='Use mock mode explicitly')
+parser.add_argument('--onchain', action='store_true', default=False, help='Use real on-chain contracts (REQUIRES anchor programs deployed)')
 args = parser.parse_args()
 
-USE_MOCK = args.mock or not args.onchain
+USE_MOCK = args.mock or not args.onchain  # Mock by default, --onchain overrides
 
 def check_anchor_deployed() -> bool:
     """Check if Anchor programs are deployed"""
