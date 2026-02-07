@@ -15,19 +15,19 @@ jobs:
           python-version: "3.12"
 
       - name: Run smoke tests
-        run: |
-          python scripts/smoke_tests.py
+        run: python scripts/smoke_tests.py
 
       - name: Run simple unit tests
-        run: |
-          python src/tests/unit/test_simple.py
+        run: python src/tests/unit/test_simple.py
 
       - name: Verify imports
+        env:
+          PYTHONPATH: src
         run: |
           python -c "
-          from src.clawtrust.sdk.client import SolanaClient
-          from src.clawtrust.sdk.identity import AgentIdentity
-          from src.clawtrust.sdk.reputation import ReputationEngine
-          from src.clawtrust.sdk.escrow import EscrowClient
+          from trustyclaw.sdk.client import SolanaClient
+          from trustyclaw.sdk.identity import AgentIdentity
+          from trustyclaw.sdk.reputation import ReputationEngine
+          from trustyclaw.sdk.escrow import EscrowClient
           print('All imports successful')
           "
