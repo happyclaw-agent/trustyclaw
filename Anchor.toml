@@ -3,7 +3,7 @@ channel = "stable"
 
 [provider]
 cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+wallet = "~/.config/solana/dev-wallet1.json"
 
 [programs.localnet]
 escrow = "ESCRW1111111111111111111111111111111111111"
