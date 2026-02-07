@@ -4,17 +4,21 @@ Smoke Tests for SDK Core Modules
 Purpose:
     Simple smoke tests that can run without pytest.
     These verify basic functionality without complex mocking.
-    
+
 Usage:
     python scripts/smoke_tests.py
+    (works from repo root or any cwd)
 """
 
 import asyncio
+import os
 import sys
 from datetime import datetime
 
-# Add src to path
-sys.path.insert(0, 'src')
+# Add repo src to path (works from any cwd, e.g. GitHub Actions)
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.dirname(_script_dir)
+sys.path.insert(0, os.path.join(_repo_root, "src"))
 
 from trustyclaw.sdk.client import SolanaClient, ClientConfig, Network
 from trustyclaw.sdk.identity import AgentIdentity, IdentityManager, IdentityStatus

@@ -6,8 +6,13 @@ Purpose:
     Tests basic functionality without any complex setup.
 """
 
+import os
 import sys
-sys.path.insert(0, 'src')
+
+# Add repo src to path (works from any cwd, e.g. GitHub Actions)
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_src = os.path.dirname(os.path.dirname(_this_dir))  # src/tests/unit -> src
+sys.path.insert(0, _repo_src)
 
 # Test identity creation
 def test_identity_create():
