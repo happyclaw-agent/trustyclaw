@@ -45,6 +45,10 @@ ENV/
 htmlcov/
 *.cover
 
+# Anchor / Solana
+target/
+myenv/
+
 # Misc
 *.log
 
