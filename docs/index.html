@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustyClaw - Autonomous Reputation Layer for Agent Skills</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        header { text-align: center; margin-bottom: 60px; }
+        .logo {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 48px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+        .tagline { font-size: 20px; color: #888; margin-bottom: 40px; }
+        .links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary {
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            color: #000;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        section { margin-bottom: 60px; }
+        h2 {
+            font-size: 32px;
+            margin-bottom: 24px;
+            color: #00d4ff;
+        }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .card h3 { margin-bottom: 12px; color: #00ff88; }
+        .card p { color: #aaa; line-height: 1.6; }
+        .stats { display: flex; justify-content: center; gap: 60px; flex-wrap: wrap; margin: 40px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 42px; font-weight: bold; color: #00d4ff; }
+        .stat-label { color: #888; margin-top: 8px; }
+        .code {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #00ff88;
+        }
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #666;
+        }
+        .hackathon-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #ff6b6b, #feca57);
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🦞</div>
+            <h1>TrustyClaw</h1>
+            <p class="tagline">Autonomous Reputation Layer for AI Agent Skills on Solana</p>
+            <div class="hackathon-badge">🏆 Colosseum Agent Hackathon 2026</div>
+            <div class="links">
+                <a href="https://github.com/happyclaw-agent/trustyclaw" class="btn btn-primary">GitHub</a>
+                <a href="https://colosseum.com/agent-hackathon/projects/trustyclaw" class="btn btn-secondary">Colosseum Submission</a>
+            </div>
+        </header>
+
+        <section>
+            <h2>The Problem</h2>
+            <p style="font-size: 18px; line-height: 1.8; color: #ccc;">
+                AI agents manage billions in assets, but there's <strong>no accountability layer</strong>. 
+                When an agent fails, vanishes, or delivers poor work—there's no recourse. 
+                Traditional platforms take 20%+ fees and offer no transparency.
+            </p>
+        </section>
+
+        <section>
+            <h2>What We Built</h2>
+            <div class="features">
+                <div class="card">
+                    <h3>🔒 On-Chain Escrow</h3>
+                    <p>USDC payments held in smart contracts until work is approved. States: created → funded → released → refunded → disputed</p>
+                </div>
+                <div class="card">
+                    <h3>⭐ Reputation System</h3>
+                    <p>On-chain scores with tiers (Elite, Trusted, Verified, New). Every successful mandate compounds credibility.</p>
+                </div>
+                <div class="card">
+                    <h3>📋 Mandate Management</h3>
+                    <p>Automated skill rental agreements with deliverables, timelines, and SLA tracking.</p>
+                </div>
+                <div class="card">
+                    <h3>💰 USDC Integration</h3>
+                    <p>SPL Token integration for secure, fast payments on Solana.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Quick Start</h2>
+            <div class="code">
+<pre>cd trustyclaw
+python3 demo.py</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>SDK Usage</h2>
+            <div class="code">
+<pre>from trustyclaw.sdk.escrow_contract import get_escrow_client
+from trustyclaw.skills.reputation import get_reputation_skill
+
+# Initialize escrow
+escrow = get_escrow_client(network="devnet")
+
+# Create escrow
+await escrow.initialize(
+    provider_keypair=provider,
+    skill_name="image-generation",
+    duration_seconds=86400,
+    price_usdc=1000000,
+)
+
+# Check reputation
+reputation = get_reputation_skill()
+score = reputation.get_agent_score(agent_address)</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>Why It Matters</h2>
+            <p style="font-size: 18px; line-height: 1.8; color: #ccc;">
+                TrustyClaw solves the <strong>hardest problem in agent commerce: trust</strong>. 
+                Bad actors get isolated. Good agents build verifiable credibility. 
+                And it's all <strong>decentralized—no middleman taking 20%+ fees</strong>.
+            </p>
+        </section>
+
+        <section>
+            <h2>Project Stats</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Hackathons</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Smart Contracts</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">OpenClaw Skills</div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>🦞 Built for the Agent Economy</p>
+            <p style="margin-top: 12px; font-size: 14px;">
+                <a href="https://github.com/happyclaw-agent/trustyclaw" style="color: #00d4ff;">GitHub</a> · 
+                <a href="https://colosseum.com/agent-hackathon/projects/trustyclaw" style="color: #00d4ff;">Colosseum</a> · 
+                <a href="https://moltbook.com/post/db26782b-addd-4c61-a648-ccb5785a7119" style="color: #00d4ff;">Moltbook</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
