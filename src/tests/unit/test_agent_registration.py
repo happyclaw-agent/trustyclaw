@@ -331,7 +331,6 @@ def test_negotiation_sessions():
         offerer="client",
         price=900000,
         duration=7200,
-        duration_seconds=7200,
     )
     
     assert accepted.status == "accepted"
@@ -612,20 +611,29 @@ def test_delivery_preferences():
     """Test delivery preferences"""
     from trustyclaw.models.negotiation import DeliveryPreferences, DeliveryPreference
     
-    prefs = DeliveryPreferences(
-        preference=DeliveryPreference.EXPRESS,
+    # Test STANDARD delivery
+    standard_prefs = DeliveryPreferences(
+        preference=DeliveryPreference.STANDARD,
         preferred_duration_seconds=14400,  # 4 hours
         max_duration_seconds=86400,  # 24 hours
         express_multiplier=1.5,
     )
     
-    # Standard delivery at preferred time
-    price, duration = prefs.get_adjusted_price(1000000, 14400)
+    # Standard delivery returns base price
+    price, duration = standard_prefs.get_adjusted_price(1000000, 14400)
     assert price == 1000000
     assert duration == 14400
     
-    # Express delivery
-    express_price, express_duration = prefs.get_adjusted_price(1000000, 14400)
+    # Test EXPRESS delivery
+    express_prefs = DeliveryPreferences(
+        preference=DeliveryPreference.EXPRESS,
+        preferred_duration_seconds=14400,
+        max_duration_seconds=86400,
+        express_multiplier=1.5,
+    )
+    
+    # Express delivery applies multiplier
+    express_price, express_duration = express_prefs.get_adjusted_price(1000000, 14400)
     assert express_price == 1500000  # 1.5x multiplier
     assert express_duration == 14400
     

@@ -278,7 +278,6 @@ class NegotiationSession:
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     deadline: str = field(default_factory=lambda: (datetime.utcnow() + timedelta(hours=24)).isoformat())
-    deadline: str = field(default_factory=lambda: (datetime.utcnow() + datetime.timedelta(hours=24)).isoformat())
     history: List[Dict] = field(default_factory=list)
     
     def add_counter(
