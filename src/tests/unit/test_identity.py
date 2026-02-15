@@ -1,8 +1,6 @@
 """Tests for Identity Module"""
 
 import pytest
-from pydantic import ValidationError
-
 from src.trustyclaw.core.identity import (
     AgentIdentity,
     IdentityStatus,

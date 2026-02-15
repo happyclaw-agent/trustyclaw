@@ -28,10 +28,9 @@ Notes:
     - For testnet/devnet, tokens are free - no mocking needed!
 """
 
+import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Any
-import os
 
 
 class Network(Enum):
@@ -45,8 +44,8 @@ class Network(Enum):
 class ClientConfig:
     """Configuration for Solana client connection"""
     network: Network = Network.DEVNET
-    rpc_url: Optional[str] = None
-    ws_url: Optional[str] = None
+    rpc_url: str | None = None
+    ws_url: str | None = None
     commitment: str = "confirmed"
 
 
@@ -62,15 +61,15 @@ class SolanaClient:
         >>> balance = await client.get_balance(wallet)
         >>> print(f"Balance: {balance} lamports")
     """
-    
+
     # Default RPC URLs for each network
     RPC_URLS = {
         Network.MAINNET: "https://api.mainnet-beta.solana.com",
         Network.TESTNET: "https://api.testnet.solana.com",
         Network.DEVNET: "https://api.devnet.solana.com",
     }
-    
-    def __init__(self, config: Optional[ClientConfig] = None):
+
+    def __init__(self, config: ClientConfig | None = None):
         """
         Initialize Solana client.
         
@@ -78,7 +77,7 @@ class SolanaClient:
             config: Optional ClientConfig. If not provided, uses devnet defaults.
         """
         self.config = config or ClientConfig()
-        
+
         # Determine RPC URL
         if self.config.rpc_url:
             self.rpc_url = self.config.rpc_url
@@ -87,14 +86,14 @@ class SolanaClient:
                 self.config.network,
                 self.RPC_URLS[Network.DEVNET]
             )
-        
+
         # Allow environment override
         env_url = os.environ.get("SOLANA_RPC_URL")
         if env_url:
             self.rpc_url = env_url
-        
+
         self.commitment = self.config.commitment
-    
+
     async def get_balance(self, address: str) -> int:
         """
         Get the balance of a Solana address in lamports.
@@ -109,7 +108,7 @@ class SolanaClient:
             ConnectionError: If RPC call fails
         """
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.rpc_url,
@@ -125,8 +124,8 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return result["result"]["value"]
-    
-    async def get_account_info(self, address: str) -> Optional[dict]:
+
+    async def get_account_info(self, address: str) -> dict | None:
         """
         Get account info for a Solana address.
         
@@ -140,7 +139,7 @@ class SolanaClient:
             ConnectionError: If RPC call fails
         """
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.rpc_url,
@@ -156,7 +155,7 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return result["result"]["value"]
-    
+
     async def get_latest_blockhash(self) -> str:
         """
         Get the latest blockhash for transaction building.
@@ -168,7 +167,7 @@ class SolanaClient:
             ConnectionError: If RPC call fails
         """
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.rpc_url,
@@ -184,7 +183,7 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return result["result"]["value"]["blockhash"]
-    
+
     async def send_transaction(
         self,
         transaction: bytes,
@@ -204,8 +203,9 @@ class SolanaClient:
             ConnectionError: If RPC call fails
         """
         import base64
+
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.rpc_url,
@@ -227,7 +227,7 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return result["result"]
-    
+
     async def get_token_balance(
         self,
         token_account: str,
@@ -244,7 +244,7 @@ class SolanaClient:
             Token balance in raw units (not decimals)
         """
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.rpc_url,
@@ -260,11 +260,11 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return int(result["result"]["value"]["amount"])
-    
+
     async def get_token_accounts_by_owner(
         self,
         owner: str,
-        mint: Optional[str] = None,
+        mint: str | None = None,
     ) -> list[dict]:
         """
         Get all token accounts owned by an address.
@@ -277,12 +277,12 @@ class SolanaClient:
             List of token account dicts
         """
         import httpx
-        
+
         async with httpx.AsyncClient() as client:
             params = [{"commitment": self.commitment}]
             if mint:
                 params.append({"mint": mint})
-            
+
             response = await client.post(
                 self.rpc_url,
                 json={
@@ -297,7 +297,7 @@ class SolanaClient:
             if "error" in result:
                 raise RuntimeError(f"RPC error: {result['error']}")
             return result["result"]["value"]
-    
+
     def derive_pda(
         self,
         seeds: list[bytes],
@@ -317,18 +317,18 @@ class SolanaClient:
             Uses SHA256 for PDA derivation.
         """
         import hashlib
-        
+
         combined = b"".join(seeds) + program_id.encode()
         hash_digest = hashlib.sha256(combined).digest()
         address_bytes = hash_digest[:32]
         address = "".join(f"{b:02x}" for b in address_bytes)
-        
+
         return (address, 255)
-    
+
     def get_rpc_url(self) -> str:
         """Get the configured RPC URL"""
         return self.rpc_url
-    
+
     def get_network(self) -> Network:
         """Get the configured network"""
         return self.config.network
@@ -351,22 +351,22 @@ def get_client(network: str = "devnet") -> SolanaClient:
         network_enum = Network.MAINNET
     elif network == "testnet":
         network_enum = Network.TESTNET
-    
+
     return SolanaClient(ClientConfig(network=network_enum))
 
 
 if __name__ == "__main__":
     import asyncio
-    
+
     async def main():
         client = SolanaClient()
         print(f"Connected to: {client.get_rpc_url()}")
-        
+
         # Get latest blockhash (sanity check)
         try:
             blockhash = await client.get_latest_blockhash()
             print(f"Latest blockhash: {blockhash[:16]}...")
         except Exception as e:
             print(f"Connection test: {e}")
-    
+
     asyncio.run(main())

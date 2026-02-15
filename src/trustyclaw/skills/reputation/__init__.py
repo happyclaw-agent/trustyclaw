@@ -4,11 +4,11 @@ Reputation Skill for TrustyClaw
 On-chain reputation queries and aggregation.
 """
 
+import json
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
-import json
+from typing import Any, Dict, List, Optional
 
 
 class ReputationTier(Enum):
@@ -32,9 +32,9 @@ class ReputationMetrics:
     positive_reviews: int = 0
     negative_reviews: int = 0
     average_response_time_hours: float = 24.0
-    last_updated: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    last_updated: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_address": self.agent_address,
             "reputation_score": self.reputation_score,
@@ -58,8 +58,8 @@ class ReputationBreakdown:
     communication_score: float = 50.0
     value_score: float = 50.0
     overall_score: float = 50.0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_address": self.agent_address,
             "quality_score": self.quality_score,
@@ -90,13 +90,13 @@ class ReputationSkill:
     - Track reputation trends
     - Verify reputation claims
     """
-    
+
     def __init__(self):
-        self._reputations: Dict[str, ReputationMetrics] = {}
-        self._breakdowns: Dict[str, ReputationBreakdown] = {}
-        self._history: Dict[str, List[ReputationHistory]] = {}
+        self._reputations: dict[str, ReputationMetrics] = {}
+        self._breakdowns: dict[str, ReputationBreakdown] = {}
+        self._history: dict[str, list[ReputationHistory]] = {}
         self._init_mock_data()
-    
+
     def _init_mock_data(self):
         """Initialize with sample reputation data"""
         # Sample agents with varying reputations
@@ -105,7 +105,7 @@ class ReputationSkill:
             ("HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B", 87.3, 4.6, 300, 92.0, 450),
             ("3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN", 65.0, 3.8, 80, 85.0, 95),
         ]
-        
+
         for addr, score, rating, reviews, on_time, completed in agents:
             metrics = ReputationMetrics(
                 agent_address=addr,
@@ -119,7 +119,7 @@ class ReputationSkill:
                 last_updated=datetime.utcnow().isoformat(),
             )
             self._reputations[addr] = metrics
-            
+
             # Create breakdown
             breakdown = ReputationBreakdown(
                 agent_address=addr,
@@ -130,22 +130,22 @@ class ReputationSkill:
                 overall_score=score,
             )
             self._breakdowns[addr] = breakdown
-            
+
             # Create history
             history = []
             for i in range(12):  # 12 months
                 history.append(ReputationHistory(
-                    timestamp=(datetime.utcnow() - 
+                    timestamp=(datetime.utcnow() -
                               __import__('datetime').timedelta(days=i * 30)).isoformat(),
                     reputation_score=score - (i * 0.5),
                     average_rating=rating - (i * 0.02),
                     total_reviews=reviews - (i * 10),
                 ))
             self._history[addr] = history
-    
+
     # ============ Query Operations ============
-    
-    def get_agent_reputation(self, agent_address: str) -> Optional[ReputationMetrics]:
+
+    def get_agent_reputation(self, agent_address: str) -> ReputationMetrics | None:
         """
         Get complete reputation metrics for an agent.
         
@@ -156,8 +156,8 @@ class ReputationSkill:
             ReputationMetrics or None
         """
         return self._reputations.get(agent_address)
-    
-    def get_reputation_breakdown(self, agent_address: str) -> Optional[ReputationBreakdown]:
+
+    def get_reputation_breakdown(self, agent_address: str) -> ReputationBreakdown | None:
         """
         Get detailed reputation breakdown by category.
         
@@ -168,8 +168,8 @@ class ReputationSkill:
             ReputationBreakdown or None
         """
         return self._breakdowns.get(agent_address)
-    
-    def get_reputation_score(self, agent_address: str) -> Optional[float]:
+
+    def get_reputation_score(self, agent_address: str) -> float | None:
         """
         Get simple reputation score (0-100).
         
@@ -181,8 +181,8 @@ class ReputationSkill:
         """
         rep = self._reputations.get(agent_address)
         return rep.reputation_score if rep else None
-    
-    def get_average_rating(self, agent_address: str) -> Optional[float]:
+
+    def get_average_rating(self, agent_address: str) -> float | None:
         """
         Get agent's average rating (1-5).
         
@@ -194,8 +194,8 @@ class ReputationSkill:
         """
         rep = self._reputations.get(agent_address)
         return rep.average_rating if rep else None
-    
-    def get_on_time_rate(self, agent_address: str) -> Optional[float]:
+
+    def get_on_time_rate(self, agent_address: str) -> float | None:
         """
         Get agent's on-time completion rate.
         
@@ -207,9 +207,9 @@ class ReputationSkill:
         """
         rep = self._reputations.get(agent_address)
         return rep.on_time_percentage if rep else None
-    
+
     # ============ Tier Operations ============
-    
+
     def get_reputation_tier(self, agent_address: str) -> str:
         """
         Get agent's reputation tier.
@@ -221,7 +221,7 @@ class ReputationSkill:
             Tier name
         """
         score = self.get_reputation_score(agent_address)
-        
+
         if score is None:
             return ReputationTier.UNKNOWN.value
         elif score >= 90:
@@ -234,8 +234,8 @@ class ReputationSkill:
             return ReputationTier.NEW.value
         else:
             return ReputationTier.UNKNOWN.value
-    
-    def get_top_reputed_agents(self, limit: int = 10) -> List[ReputationMetrics]:
+
+    def get_top_reputed_agents(self, limit: int = 10) -> list[ReputationMetrics]:
         """
         Get agents with highest reputation.
         
@@ -251,14 +251,14 @@ class ReputationSkill:
             reverse=True,
         )
         return sorted_reps[:limit]
-    
+
     # ============ Trust Score ============
-    
+
     def calculate_trust_score(
         self,
         agent_address: str,
-        weights: Dict[str, float] = None,
-    ) -> Optional[float]:
+        weights: dict[str, float] = None,
+    ) -> float | None:
         """
         Calculate composite trust score.
         
@@ -272,7 +272,7 @@ class ReputationSkill:
         rep = self._reputations.get(agent_address)
         if not rep:
             return None
-        
+
         # Default weights
         if weights is None:
             weights = {
@@ -281,18 +281,18 @@ class ReputationSkill:
                 "volume": 0.20,
                 "positivity": 0.20,
             }
-        
+
         # Normalize metrics
         rating_norm = rep.average_rating / 5.0  # 0-1
         on_time_norm = rep.on_time_percentage / 100.0  # 0-1
-        
+
         # Volume bonus (diminishing returns)
         volume_norm = min(rep.completed_tasks / 100.0, 1.0)
-        
+
         # Positivity ratio
         total = rep.positive_reviews + rep.negative_reviews
         positivity = rep.positive_reviews / total if total > 0 else 0.5
-        
+
         # Calculate weighted score
         trust = (
             rating_norm * weights["rating"] +
@@ -300,16 +300,16 @@ class ReputationSkill:
             volume_norm * weights["volume"] +
             positivity * weights["positivity"]
         ) * 100
-        
+
         return round(trust, 1)
-    
+
     # ============ Review History ============
-    
+
     def get_review_history(
         self,
         agent_address: str,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get agent's review history.
         
@@ -323,7 +323,7 @@ class ReputationSkill:
         rep = self._reputations.get(agent_address)
         if not rep:
             return []
-        
+
         # Generate mock reviews based on metrics
         reviews = []
         for i in range(min(limit, rep.total_reviews)):
@@ -334,14 +334,14 @@ class ReputationSkill:
                 "on_time": i % 5 != 0,
                 "timestamp": f"2025-{11 - (i % 12):02d}-{(i % 28) + 1:02d}",
             })
-        
+
         return reviews[:limit]
-    
+
     def get_reputation_history(
         self,
         agent_address: str,
         months: int = 12,
-    ) -> List[ReputationHistory]:
+    ) -> list[ReputationHistory]:
         """
         Get historical reputation data.
         
@@ -353,15 +353,15 @@ class ReputationSkill:
             List of historical data points
         """
         return self._history.get(agent_address, [])[:months]
-    
+
     # ============ Verification ============
-    
+
     def verify_reputation_claim(
         self,
         agent_address: str,
         claimed_score: float,
         tolerance: float = 5.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Verify an agent's claimed reputation score.
         
@@ -374,16 +374,16 @@ class ReputationSkill:
             Verification result
         """
         actual_score = self.get_reputation_score(agent_address)
-        
+
         if actual_score is None:
             return {
                 "verified": False,
                 "reason": "No reputation data found",
                 "actual_score": None,
             }
-        
+
         diff = abs(actual_score - claimed_score)
-        
+
         return {
             "verified": diff <= tolerance,
             "claimed_score": claimed_score,
@@ -391,12 +391,12 @@ class ReputationSkill:
             "difference": diff,
             "within_tolerance": diff <= tolerance,
         }
-    
+
     def compare_agents(
         self,
         agent_a: str,
         agent_b: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Compare two agents' reputations.
         
@@ -409,10 +409,10 @@ class ReputationSkill:
         """
         rep_a = self._reputations.get(agent_a)
         rep_b = self._reputations.get(agent_b)
-        
+
         if not rep_a or not rep_b:
             return {"error": "One or both agents not found"}
-        
+
         return {
             "agent_a": agent_a,
             "agent_b": agent_b,
@@ -439,20 +439,20 @@ class ReputationSkill:
                 },
             },
         }
-    
+
     # ============ Statistics ============
-    
-    def get_reputation_stats(self) -> Dict[str, Any]:
+
+    def get_reputation_stats(self) -> dict[str, Any]:
         """Get overall reputation statistics"""
         reps = list(self._reputations.values())
-        
+
         if not reps:
             return {
                 "total_agents": 0,
                 "avg_score": 0,
                 "avg_rating": 0,
             }
-        
+
         return {
             "total_agents": len(reps),
             "avg_score": sum(r.reputation_score for r in reps) / len(reps),
@@ -462,9 +462,9 @@ class ReputationSkill:
             "trusted_count": len([r for r in reps if r.reputation_score >= 75]),
             "new_count": len([r for r in reps if r.reputation_score < 50]),
         }
-    
+
     # ============ Export ============
-    
+
     def export_reputation_json(self, agent_address: str = None) -> str:
         """Export reputation data as JSON"""
         if agent_address:
@@ -472,7 +472,7 @@ class ReputationSkill:
             data = [rep.to_dict()] if rep else []
         else:
             data = [r.to_dict() for r in self._reputations.values()]
-        
+
         return json.dumps(data, indent=2)
 
 

@@ -4,20 +4,19 @@ On-Chain Reputation Storage for TrustyClaw
 Stores reputation scores and reviews in Solana PDA accounts.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
-from datetime import datetime
-from enum import Enum
 import hashlib
 import struct
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 try:
-    from solana.rpc.api import Client as SolanaClient
-    from solana.rpc.commitment import Confirmed, Finalized
     from solana.keypair import Keypair
     from solana.publickey import PublicKey
+    from solana.rpc.api import Client as SolanaClient
+    from solana.rpc.commitment import Confirmed, Finalized
+    from solana.system_program import CreateAccountParams, create_account
     from solana.transaction import Transaction
-    from solana.system_program import create_account, CreateAccountParams
     HAS_SOLANA = True
 except ImportError:
     HAS_SOLANA = False
@@ -37,7 +36,7 @@ class ReputationScoreData:
     on_time_percentage: float = 100.0
     reputation_score: float = 50.0
     last_updated: int = 0  # Unix timestamp
-    
+
     def to_bytes(self) -> bytes:
         """Serialize to bytes"""
         return struct.pack(
@@ -50,7 +49,7 @@ class ReputationScoreData:
             int(self.on_time_percentage * 100),
             self.last_updated,
         )
-    
+
     @classmethod
     def from_bytes(cls, data: bytes) -> 'ReputationScoreData':
         """Deserialize from bytes"""
@@ -78,7 +77,7 @@ class ReviewData:
     timestamp: int
     positive_votes: int = 0
     negative_votes: int = 0
-    
+
     def to_bytes(self) -> bytes:
         """Serialize to bytes"""
         return struct.pack(
@@ -94,7 +93,7 @@ class ReviewData:
             self.comment_hash.encode('utf-8')[:32].ljust(32, b'\0'),
             self.timestamp,
         )
-    
+
     @classmethod
     def from_bytes(cls, data: bytes) -> 'ReviewData':
         """Deserialize from bytes"""
@@ -121,44 +120,44 @@ class ReputationPDAProgram:
     - Reputation Account: [REPUTATION_SEED, agent_address]
     - Review Account: [REVIEW_SEED, review_id]
     """
-    
+
     REPUTATION_SEED = b"trustyclaw-reputation"
     REVIEW_SEED = b"trustyclaw-review"
     REVIEW_LIST_SEED = b"trustyclaw-reviews"
-    
+
     ACCOUNT_SIZE = 256  # Fixed size for simplicity
     REVIEW_SIZE = 256
-    
+
     def __init__(
         self,
         network: str = "devnet",
-        program_id: Optional[str] = None,
+        program_id: str | None = None,
     ):
         self.network = network
         self.program_id = program_id or self._derive_program_id()
-        
+
         if HAS_SOLANA:
             self.client = SolanaClient(
                 f"https://api.{network}.solana.com"
             )
         else:
             self.client = None
-        
-        self._keypair: Optional[Keypair] = None
-    
+
+        self._keypair: Keypair | None = None
+
     def _derive_program_id(self) -> str:
         """Derive program ID (placeholder for real program)"""
         return "11111111111111111111111111111111"  # System Program as placeholder
-    
+
     def derive_reputation_pda(self, agent_address: str) -> str:
         """Derive PDA for agent's reputation account"""
         if not HAS_SOLANA:
             return f"rep-{hash(agent_address) % 100000:05d}"
-        
+
         try:
             agent_bytes = agent_address.encode('utf-8')[:32].ljust(32, b'\0')
             program_id = PublicKey(self.program_id)
-            
+
             pda, bump = PublicKey.find_program_address(
                 [self.REPUTATION_SEED, agent_bytes],
                 program_id,
@@ -166,16 +165,16 @@ class ReputationPDAProgram:
             return str(pda)
         except Exception:
             return f"rep-{hash(agent_address) % 100000:05d}"
-    
+
     def derive_review_list_pda(self, agent_address: str) -> str:
         """Derive PDA for agent's review list"""
         if not HAS_SOLANA:
             return f"reviews-{hash(agent_address) % 100000:05d}"
-        
+
         try:
             agent_bytes = agent_address.encode('utf-8')[:32].ljust(32, b'\0')
             program_id = PublicKey(self.program_id)
-            
+
             pda, bump = PublicKey.find_program_address(
                 [self.REVIEW_LIST_SEED, agent_bytes],
                 program_id,
@@ -183,8 +182,8 @@ class ReputationPDAProgram:
             return str(pda)
         except Exception:
             return f"reviews-{hash(agent_address) % 100000:05d}"
-    
-    def get_reputation(self, agent_address: str) -> Optional[ReputationScoreData]:
+
+    def get_reputation(self, agent_address: str) -> ReputationScoreData | None:
         """
         Get on-chain reputation for an agent.
         
@@ -195,27 +194,27 @@ class ReputationPDAProgram:
             ReputationScoreData or None
         """
         pda = self.derive_reputation_pda(agent_address)
-        
+
         if not HAS_SOLANA or not self.client:
             return self._mock_reputation(agent_address)
-        
+
         try:
             resp = self.client.get_account_info(pda, encoding="base64")
-            
+
             if resp.value:
                 data = resp.value.data
                 if isinstance(data, bytes):
                     return ReputationScoreData.from_bytes(data)
-            
+
             return None
         except Exception:
             return self._mock_reputation(agent_address)
-    
+
     def _mock_reputation(self, agent_address: str) -> ReputationScoreData:
         """Get mock reputation data"""
         # Generate deterministic mock data based on address
         hash_val = hash(agent_address) % 1000
-        
+
         return ReputationScoreData(
             agent_address=agent_address,
             total_reviews=10 + (hash_val % 50),
@@ -224,12 +223,12 @@ class ReputationPDAProgram:
             reputation_score=70.0 + ((hash_val % 250) / 10),
             last_updated=int(datetime.utcnow().timestamp()),
         )
-    
+
     def create_reputation_account(
         self,
         agent_address: str,
         payer_address: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create reputation account for an agent.
         
@@ -241,14 +240,14 @@ class ReputationPDAProgram:
             Transaction result dict
         """
         pda = self.derive_reputation_pda(agent_address)
-        
+
         if not HAS_SOLANA or not self.client:
             return {
                 "success": True,
                 "pda": pda,
                 "signature": f"create-rep-{pda[:16]}",
             }
-        
+
         try:
             # Would create account via create_account instruction
             return {
@@ -258,7 +257,7 @@ class ReputationPDAProgram:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
-    
+
     def update_reputation(
         self,
         agent_address: str,
@@ -266,7 +265,7 @@ class ReputationPDAProgram:
         new_reviews: int,
         new_rating: float,
         on_time_pct: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update reputation score on-chain.
         
@@ -281,7 +280,7 @@ class ReputationPDAProgram:
             Transaction result dict
         """
         pda = self.derive_reputation_pda(agent_address)
-        
+
         if not HAS_SOLANA or not self.client:
             return {
                 "success": True,
@@ -289,7 +288,7 @@ class ReputationPDAProgram:
                 "signature": f"update-rep-{pda[:16]}",
                 "score": new_score,
             }
-        
+
         try:
             # Would update account data via instruction
             return {
@@ -300,7 +299,7 @@ class ReputationPDAProgram:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
-    
+
     def submit_review(
         self,
         review_id: str,
@@ -310,7 +309,7 @@ class ReputationPDAProgram:
         rating: int,
         completed_on_time: bool,
         comment: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Submit a review on-chain.
         
@@ -327,7 +326,7 @@ class ReputationPDAProgram:
             Transaction result dict
         """
         comment_hash = hashlib.sha256(comment.encode()).hexdigest()[:32]
-        
+
         review_data = ReviewData(
             review_id=review_id,
             provider=provider,
@@ -338,14 +337,14 @@ class ReputationPDAProgram:
             comment_hash=comment_hash,
             timestamp=int(datetime.utcnow().timestamp()),
         )
-        
+
         if not HAS_SOLANA or not self.client:
             return {
                 "success": True,
                 "review_id": review_id,
                 "signature": f"review-{review_id[:16]}",
             }
-        
+
         try:
             return {
                 "success": True,
@@ -354,12 +353,12 @@ class ReputationPDAProgram:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
-    
+
     def get_agent_reviews(
         self,
         agent_address: str,
         limit: int = 10,
-    ) -> List[ReviewData]:
+    ) -> list[ReviewData]:
         """
         Get recent reviews for an agent.
         
@@ -372,14 +371,14 @@ class ReputationPDAProgram:
         """
         if not HAS_SOLANA or not self.client:
             return self._mock_reviews(agent_address, limit)
-        
+
         try:
             # Would fetch from review list PDA
             return self._mock_reviews(agent_address, limit)
         except Exception:
             return self._mock_reviews(agent_address, limit)
-    
-    def _mock_reviews(self, agent_address: str, limit: int) -> List[ReviewData]:
+
+    def _mock_reviews(self, agent_address: str, limit: int) -> list[ReviewData]:
         """Generate mock reviews"""
         reviews = []
         for i in range(min(limit, 5)):
@@ -394,7 +393,7 @@ class ReputationPDAProgram:
                 timestamp=int(datetime.utcnow().timestamp()) - (i * 86400),
             ))
         return reviews
-    
+
     def calculate_score(
         self,
         average_rating: float,
@@ -417,13 +416,13 @@ class ReputationPDAProgram:
         # Normalize to 0-1
         rating_norm = average_rating / 5.0
         on_time_norm = on_time_pct / 100.0
-        
+
         # Volume bonus (diminishing returns)
         volume_norm = min(total_reviews / 100.0, 1.0)
-        
+
         # Weighted average
         score = (rating_norm * 0.4 + on_time_norm * 0.3 + volume_norm * 0.3) * 100
-        
+
         return round(score, 1)
 
 
@@ -438,7 +437,7 @@ def get_reputation_program(network: str = "devnet") -> ReputationPDAProgram:
         Configured ReputationPDAProgram
     """
     program_id = None  # Would use real program ID in production
-    
+
     return ReputationPDAProgram(
         network=network,
         program_id=program_id,

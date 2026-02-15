@@ -22,10 +22,9 @@ Smart Contract:
     State: Created → Funded → Completed/Cancelled
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 
 class EscrowState(Enum):
@@ -51,7 +50,7 @@ class EscrowTerms:
     price_usdc: int  # microUSDC
     duration_seconds: int
     metadata_uri: str = ""
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary"""
         return {
@@ -76,9 +75,9 @@ class EscrowAccount:
     state: EscrowState
     amount: int  # microUSDC
     created_at: str
-    completed_at: Optional[str] = None
-    cancelled_at: Optional[str] = None
-    
+    completed_at: str | None = None
+    cancelled_at: str | None = None
+
     def is_expired(self) -> bool:
         """
         Check if escrow has timed out.
@@ -90,7 +89,7 @@ class EscrowAccount:
         now = datetime.utcnow()
         elapsed = (now - created).total_seconds()
         return elapsed > self.terms.duration_seconds
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary"""
         return {
@@ -114,10 +113,10 @@ class EscrowTransaction:
     Contains transaction signature and status.
     """
     tx_signature: str
-    escrow_address: Optional[str] = None
+    escrow_address: str | None = None
     success: bool = True
-    error: Optional[str] = None
-    
+    error: str | None = None
+
     def to_dict(self) -> dict:
         """Convert to dictionary"""
         return {
@@ -145,10 +144,10 @@ class EscrowClient:
         >>> terms = EscrowTerms("image-gen", 10000, 3600)
         >>> tx = await client.initialize(provider, mint, terms)
     """
-    
+
     PROGRAM_ID = ESCROW_PROGRAM_ID
     USDC_MINT = USDC_MINT
-    
+
     def __init__(self, network: str = "devnet"):
         """
         Initialize escrow client.
@@ -158,7 +157,7 @@ class EscrowClient:
         """
         self.network = network
         self._escrows: dict[str, EscrowAccount] = {}
-    
+
     async def initialize(
         self,
         provider: str,
@@ -180,11 +179,11 @@ class EscrowClient:
             EscrowTransaction with address and tx signature
         """
         import hashlib
-        
+
         # Generate PDA address
         seed = f"escrow-{provider}-{datetime.utcnow().isoformat()}"
         address = hashlib.sha256(seed.encode()).hexdigest()[:32]
-        
+
         # Create escrow state
         escrow = EscrowAccount(
             address=address,
@@ -196,13 +195,13 @@ class EscrowClient:
             created_at=datetime.utcnow().isoformat(),
         )
         self._escrows[address] = escrow
-        
+
         return EscrowTransaction(
             tx_signature=f"tx-init-{address[:16]}",
             escrow_address=address,
             success=True,
         )
-    
+
     async def accept(
         self,
         escrow_address: str,
@@ -229,25 +228,25 @@ class EscrowClient:
                 success=False,
                 error=f"Escrow {escrow_address} not found",
             )
-        
+
         if escrow.state != EscrowState.CREATED:
             return EscrowTransaction(
                 tx_signature="",
                 success=False,
                 error=f"Escrow is {escrow.state.value}, not created",
             )
-        
+
         # Fund escrow
         escrow.renter = renter
         escrow.amount = amount
         escrow.state = EscrowState.FUNDED
-        
+
         return EscrowTransaction(
             tx_signature=f"tx-accept-{escrow_address[:16]}",
             escrow_address=escrow_address,
             success=True,
         )
-    
+
     async def complete(
         self,
         escrow_address: str,
@@ -272,24 +271,24 @@ class EscrowClient:
                 success=False,
                 error=f"Escrow {escrow_address} not found",
             )
-        
+
         if escrow.state != EscrowState.FUNDED:
             return EscrowTransaction(
                 tx_signature="",
                 success=False,
                 error=f"Escrow is {escrow.state.value}, not funded",
             )
-        
+
         # Release funds
         escrow.state = EscrowState.COMPLETED
         escrow.completed_at = datetime.utcnow().isoformat()
-        
+
         return EscrowTransaction(
             tx_signature=f"tx-complete-{escrow_address[:16]}",
             escrow_address=escrow_address,
             success=True,
         )
-    
+
     async def cancel(
         self,
         escrow_address: str,
@@ -314,25 +313,25 @@ class EscrowClient:
                 success=False,
                 error=f"Escrow {escrow_address} not found",
             )
-        
+
         if escrow.state != EscrowState.FUNDED:
             return EscrowTransaction(
                 tx_signature="",
                 success=False,
                 error=f"Escrow is {escrow.state.value}, not funded",
             )
-        
+
         # Refund
         escrow.state = EscrowState.CANCELLED
         escrow.cancelled_at = datetime.utcnow().isoformat()
-        
+
         return EscrowTransaction(
             tx_signature=f"tx-cancel-{escrow_address[:16]}",
             escrow_address=escrow_address,
             success=True,
         )
-    
-    async def get_state(self, escrow_address: str) -> Optional[EscrowState]:
+
+    async def get_state(self, escrow_address: str) -> EscrowState | None:
         """
         Get the current state of an escrow.
         
@@ -344,7 +343,7 @@ class EscrowClient:
         """
         escrow = self._escrows.get(escrow_address)
         return escrow.state if escrow else None
-    
+
     async def check_timeout(self, escrow_address: str) -> bool:
         """
         Check if escrow has timed out.
@@ -359,8 +358,8 @@ class EscrowClient:
         if not escrow:
             return False
         return escrow.is_expired()
-    
-    def get_escrow(self, escrow_address: str) -> Optional[EscrowAccount]:
+
+    def get_escrow(self, escrow_address: str) -> EscrowAccount | None:
         """
         Get escrow account details.
         
@@ -371,7 +370,7 @@ class EscrowClient:
             EscrowAccount or None
         """
         return self._escrows.get(escrow_address)
-    
+
     def format_escrow(self, escrow: EscrowAccount) -> str:
         """
         Format escrow for human-readable display.
@@ -388,9 +387,9 @@ class EscrowClient:
             EscrowState.COMPLETED: "✅",
             EscrowState.CANCELLED: "❌",
         }
-        
+
         price_usd = escrow.terms.price_usdc / 1_000_000
-        
+
         return f"""
 {status_emoji.get(escrow.state, "")} **Escrow** #{escrow.address[:16]}
 
@@ -433,18 +432,18 @@ def create_escrow_terms(
 async def demo():
     """Demo the escrow client with real devnet wallets"""
     client = EscrowClient()
-    
+
     # Real devnet wallet addresses
     AGENT = "GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q"
     RENTER = "3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN"
     PROVIDER = "HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B"
-    
+
     print("=== TrustyClaw Escrow Demo ===")
     print(f"Agent (Happy Claw): {AGENT[:16]}...")
     print(f"Renter: {RENTER[:16]}...")
     print(f"Provider: {PROVIDER[:16]}...")
     print()
-    
+
     # Create terms
     terms = create_escrow_terms(
         skill_name="image-generation",
@@ -452,7 +451,7 @@ async def demo():
         duration_seconds=3600,
     )
     print(f"Created terms: {terms.price_usdc} microUSDC")
-    
+
     # Initialize escrow
     print("\n1. Initializing escrow...")
     tx = await client.initialize(
@@ -462,7 +461,7 @@ async def demo():
     )
     print(f"   Escrow: {tx.escrow_address}")
     print(f"   TX: {tx.tx_signature}")
-    
+
     # Accept escrow
     print("\n2. Accepting and funding...")
     tx = await client.accept(
@@ -472,10 +471,10 @@ async def demo():
     )
     print(f"   TX: {tx.tx_signature}")
     print(f"   State: {await client.get_state(tx.escrow_address)}")
-    
+
     # Check timeout
     print(f"\n3. Timeout check: {await client.check_timeout(tx.escrow_address)}")
-    
+
     # Complete
     print("\n4. Completing task...")
     tx = await client.complete(
@@ -484,7 +483,7 @@ async def demo():
     )
     print(f"   TX: {tx.tx_signature}")
     print(f"   State: {await client.get_state(tx.escrow_address)}")
-    
+
     # Show final state
     escrow = client.get_escrow(tx.escrow_address)
     if escrow:

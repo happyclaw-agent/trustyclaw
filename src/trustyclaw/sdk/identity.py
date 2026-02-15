@@ -25,7 +25,6 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 
 class IdentityStatus(Enum):
@@ -58,7 +57,7 @@ class AgentIdentity:
     wallet_address: str
     public_key: str
     id: str = field(default_factory=lambda: f"agent-{uuid.uuid4().hex[:8]}")
-    email: Optional[str] = None
+    email: str | None = None
     reputation_score: float = 0.0
     total_rentals: int = 0
     completed_rentals: int = 0
@@ -66,7 +65,7 @@ class AgentIdentity:
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     metadata: dict = field(default_factory=dict)
-    
+
     def to_dict(self) -> dict:
         """
         Convert identity to dictionary for serialization.
@@ -88,7 +87,7 @@ class AgentIdentity:
             "updated_at": self.updated_at,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "AgentIdentity":
         """
@@ -115,7 +114,7 @@ class AgentIdentity:
             updated_at=data.get("updated_at", datetime.utcnow().isoformat()),
             metadata=data.get("metadata", {}),
         )
-    
+
     def update_reputation(self, score: float):
         """
         Update the reputation score.
@@ -125,7 +124,7 @@ class AgentIdentity:
         """
         self.reputation_score = score
         self.updated_at = datetime.utcnow().isoformat()
-    
+
     def increment_rentals(self, completed: bool = False):
         """
         Increment rental count.
@@ -137,7 +136,7 @@ class AgentIdentity:
         if completed:
             self.completed_rentals += 1
         self.updated_at = datetime.utcnow().isoformat()
-    
+
     def to_short_str(self) -> str:
         """Short string representation for display"""
         return f"@{self.name} ({self.reputation_score:.0f}/100)"
@@ -157,12 +156,12 @@ class IdentityManager:
         >>> for agent in agents:
         ...     print(agent.name)
     """
-    
+
     def __init__(self):
         """Initialize identity manager with empty storage"""
         self._identities: dict[str, AgentIdentity] = {}
         self._wallets: dict[str, AgentIdentity] = {}
-    
+
     def register(self, identity: AgentIdentity) -> AgentIdentity:
         """
         Register a new identity.
@@ -178,12 +177,12 @@ class IdentityManager:
         """
         if identity.wallet_address.lower() in self._wallets:
             raise ValueError(f"Wallet {identity.wallet_address} already registered")
-        
+
         self._identities[identity.id] = identity
         self._wallets[identity.wallet_address.lower()] = identity
         return identity
-    
-    def get_by_id(self, id: str) -> Optional[AgentIdentity]:
+
+    def get_by_id(self, id: str) -> AgentIdentity | None:
         """
         Get identity by ID.
         
@@ -194,8 +193,8 @@ class IdentityManager:
             AgentIdentity or None if not found
         """
         return self._identities.get(id)
-    
-    def get_by_wallet(self, wallet: str) -> Optional[AgentIdentity]:
+
+    def get_by_wallet(self, wallet: str) -> AgentIdentity | None:
         """
         Get identity by wallet address.
         
@@ -206,8 +205,8 @@ class IdentityManager:
             AgentIdentity or None if not found
         """
         return self._wallets.get(wallet.lower())
-    
-    def get_by_name(self, name: str) -> Optional[AgentIdentity]:
+
+    def get_by_name(self, name: str) -> AgentIdentity | None:
         """
         Get identity by name.
         
@@ -221,11 +220,11 @@ class IdentityManager:
             if identity.name.lower() == name.lower():
                 return identity
         return None
-    
+
     def list_identities(
         self,
-        status: Optional[IdentityStatus] = None,
-        min_reputation: Optional[float] = None,
+        status: IdentityStatus | None = None,
+        min_reputation: float | None = None,
     ) -> list[AgentIdentity]:
         """
         List all identities with optional filters.
@@ -238,23 +237,23 @@ class IdentityManager:
             List of matching identities
         """
         identities = list(self._identities.values())
-        
+
         if status:
             identities = [i for i in identities if i.status == status]
-        
+
         if min_reputation is not None:
             identities = [
                 i for i in identities
                 if i.reputation_score >= min_reputation
             ]
-        
+
         return identities
-    
+
     def update_reputation(
         self,
         wallet: str,
         score: float,
-    ) -> Optional[AgentIdentity]:
+    ) -> AgentIdentity | None:
         """
         Update reputation for an identity.
         
@@ -269,7 +268,7 @@ class IdentityManager:
         if identity:
             identity.update_reputation(score)
         return identity
-    
+
     def check_exists(self, wallet: str) -> bool:
         """
         Check if identity exists for wallet.
@@ -289,7 +288,7 @@ def create_identity(
     name: str,
     wallet_address: str,
     public_key: str,
-    email: Optional[str] = None,
+    email: str | None = None,
 ) -> AgentIdentity:
     """
     Create a new agent identity.
@@ -311,7 +310,7 @@ def create_identity(
     )
 
 
-def load_identity(wallet: str) -> Optional[AgentIdentity]:
+def load_identity(wallet: str) -> AgentIdentity | None:
     """
     Load identity from storage.
     
@@ -330,14 +329,14 @@ def load_identity(wallet: str) -> Optional[AgentIdentity]:
 def demo():
     """Demo identity management with real devnet wallets"""
     manager = IdentityManager()
-    
+
     # Real devnet wallet addresses
     WALLETS = {
         "agent": "GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q",
         "renter": "3WaHbF7k9ced4d2wA8caUHq2v57ujD4J2c57L8wZXfhN",
         "provider": "HajVDaadfi6vxrt7y6SRZWBHVYCTscCc8Cwurbqbmg5B",
     }
-    
+
     # Create identities for each wallet
     for role, address in WALLETS.items():
         identity = create_identity(
@@ -353,7 +352,7 @@ def demo():
         else:
             identity.reputation_score = 75.0
         manager.register(identity)
-    
+
     # Query the agent
     retrieved = manager.get_by_wallet(WALLETS["agent"])
     print(f"Name: {retrieved.name}")

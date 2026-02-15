@@ -4,12 +4,12 @@ Discovery Skill for TrustyClaw
 Agent/skill marketplace discovery and browsing.
 """
 
+import json
+import uuid
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
-import uuid
-import json
+from typing import Any, Dict, List, Optional
 
 
 class SkillCategory(Enum):
@@ -46,11 +46,11 @@ class Skill:
     rating: float = 0.0
     review_count: int = 0
     completed_tasks: int = 0
-    tags: List[str] = field(default_factory=list)
-    capabilities: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "agent_address": self.agent_address,
@@ -74,17 +74,17 @@ class Agent:
     address: str
     name: str
     bio: str
-    skills: List[Skill] = field(default_factory=list)
+    skills: list[Skill] = field(default_factory=list)
     rating: float = 0.0
     total_reviews: int = 0
     completed_tasks: int = 0
     member_since: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     status: str = "available"
-    avatar_url: Optional[str] = None
-    website: Optional[str] = None
-    languages: List[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    avatar_url: str | None = None
+    website: str | None = None
+    languages: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "address": self.address,
             "name": self.name,
@@ -104,13 +104,13 @@ class Agent:
 @dataclass
 class SearchFilters:
     """Filters for searching agents/skills"""
-    category: Optional[str] = None
+    category: str | None = None
     min_rating: float = 0.0
-    max_price: Optional[int] = None
-    min_price: Optional[int] = None
-    skills: List[str] = field(default_factory=list)
-    availability: Optional[str] = None
-    languages: List[str] = field(default_factory=list)
+    max_price: int | None = None
+    min_price: int | None = None
+    skills: list[str] = field(default_factory=list)
+    availability: str | None = None
+    languages: list[str] = field(default_factory=list)
     sort_by: str = "rating"  # rating, price, reviews, recent
 
 
@@ -126,13 +126,13 @@ class DiscoverySkill:
     - Trending/popular agents
     - Recommendations
     """
-    
+
     def __init__(self):
-        self._agents: Dict[str, Agent] = {}
-        self._skills: Dict[str, Skill] = {}
-        self._agent_by_skill: Dict[str, List[str]] = {}
+        self._agents: dict[str, Agent] = {}
+        self._skills: dict[str, Skill] = {}
+        self._agent_by_skill: dict[str, list[str]] = {}
         self._init_mock_data()
-    
+
     def _init_mock_data(self):
         """Initialize with sample agents and skills"""
         # Create sample agents
@@ -171,10 +171,10 @@ class DiscoverySkill:
                 languages=["English"],
             ),
         ]
-        
+
         for agent in agents:
             self._agents[agent.address] = agent
-        
+
         # Create sample skills
         skills = [
             Skill(
@@ -220,19 +220,19 @@ class DiscoverySkill:
                 capabilities=["Pandas", "Matplotlib", "SQL"],
             ),
         ]
-        
+
         for skill in skills:
             self._skills[skill.skill_id] = skill
             self._agent_by_skill.setdefault(skill.category, []).append(skill.agent_address)
-    
+
     # ============ Browse Skills ============
-    
+
     def browse_skills(
         self,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Skill]:
+    ) -> list[Skill]:
         """
         Browse skills, optionally by category.
         
@@ -245,16 +245,16 @@ class DiscoverySkill:
             List of skills
         """
         skills = list(self._skills.values())
-        
+
         if category:
             skills = [s for s in skills if s.category == category]
-        
+
         return sorted(skills, key=lambda s: s.rating, reverse=True)[offset:offset+limit]
-    
-    def get_skill_categories(self) -> List[Dict[str, Any]]:
+
+    def get_skill_categories(self) -> list[dict[str, Any]]:
         """Get all categories with skill counts"""
         categories = {}
-        
+
         for skill in self._skills.values():
             cat = skill.category
             if cat not in categories:
@@ -262,7 +262,7 @@ class DiscoverySkill:
             categories[cat]["count"] += 1
             categories[cat]["avg_price"] += skill.price_per_task
             categories[cat]["total_rating"] += skill.rating
-        
+
         result = []
         for cat, data in categories.items():
             result.append({
@@ -271,18 +271,18 @@ class DiscoverySkill:
                 "avg_price": data["avg_price"] // data["count"],
                 "avg_rating": data["total_rating"] / data["count"],
             })
-        
+
         return sorted(result, key=lambda x: x["skill_count"], reverse=True)
-    
+
     # ============ Search Agents ============
-    
+
     def search_agents(
         self,
         query: str = None,
         filters: SearchFilters = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> List[Agent]:
+    ) -> list[Agent]:
         """
         Search for agents.
         
@@ -296,7 +296,7 @@ class DiscoverySkill:
             List of matching agents
         """
         results = list(self._agents.values())
-        
+
         # Text search
         if query:
             query_lower = query.lower()
@@ -306,7 +306,7 @@ class DiscoverySkill:
                 or query_lower in a.bio.lower()
                 or any(query_lower in s.name.lower() for s in a.skills)
             ]
-        
+
         # Apply filters
         if filters:
             if filters.category:
@@ -323,7 +323,7 @@ class DiscoverySkill:
                     a for a in results
                     if any(s.category in filters.skills for s in a.skills)
                 ]
-            
+
             # Sorting
             if filters.sort_by == "rating":
                 results.sort(key=lambda a: a.rating, reverse=True)
@@ -334,9 +334,9 @@ class DiscoverySkill:
                 results.sort(key=lambda a: min([s.price_per_task for s in a.skills] or [float('inf')]))
             elif filters.sort_by == "recent":
                 results.sort(key=lambda a: a.member_since, reverse=True)
-        
+
         return results[offset:offset+limit]
-    
+
     def search_skills(
         self,
         query: str = None,
@@ -344,7 +344,7 @@ class DiscoverySkill:
         min_rating: float = 0.0,
         max_price: int = None,
         limit: int = 20,
-    ) -> List[Skill]:
+    ) -> list[Skill]:
         """
         Search for skills.
         
@@ -359,7 +359,7 @@ class DiscoverySkill:
             List of matching skills
         """
         skills = list(self._skills.values())
-        
+
         if query:
             query_lower = query.lower()
             skills = [
@@ -368,74 +368,74 @@ class DiscoverySkill:
                 or query_lower in s.description.lower()
                 or any(query_lower in t.lower() for t in s.tags)
             ]
-        
+
         if category:
             skills = [s for s in skills if s.category == category]
-        
+
         if min_rating > 0:
             skills = [s for s in skills if s.rating >= min_rating]
-        
+
         if max_price:
             skills = [s for s in skills if s.price_per_task <= max_price]
-        
+
         return sorted(skills, key=lambda s: s.rating, reverse=True)[:limit]
-    
+
     # ============ Agent Profiles ============
-    
-    def get_agent_profile(self, agent_address: str) -> Optional[Agent]:
+
+    def get_agent_profile(self, agent_address: str) -> Agent | None:
         """Get detailed agent profile"""
         return self._agents.get(agent_address)
-    
-    def get_agent_skills(self, agent_address: str) -> List[Skill]:
+
+    def get_agent_skills(self, agent_address: str) -> list[Skill]:
         """Get all skills for an agent"""
         return [
             s for s in self._skills.values()
             if s.agent_address == agent_address
         ]
-    
-    def get_agent_availability(self, agent_address: str) -> Dict[str, Any]:
+
+    def get_agent_availability(self, agent_address: str) -> dict[str, Any]:
         """Get agent availability status"""
         agent = self._agents.get(agent_address)
         if not agent:
             return {"error": "Agent not found"}
-        
+
         active_tasks = 0  # Would query active tasks
-        
+
         return {
             "address": agent_address,
             "status": agent.status,
             "active_tasks": active_tasks,
             "available": agent.status == "available",
         }
-    
+
     # ============ Top & Trending ============
-    
-    def get_top_rated_agents(self, limit: int = 10) -> List[Agent]:
+
+    def get_top_rated_agents(self, limit: int = 10) -> list[Agent]:
         """Get top rated agents"""
         return sorted(
             list(self._agents.values()),
             key=lambda a: a.rating,
             reverse=True,
         )[:limit]
-    
-    def get_top_rated_skills(self, category: str = None, limit: int = 10) -> List[Skill]:
+
+    def get_top_rated_skills(self, category: str = None, limit: int = 10) -> list[Skill]:
         """Get top rated skills"""
         skills = list(self._skills.values())
-        
+
         if category:
             skills = [s for s in skills if s.category == category]
-        
+
         return sorted(skills, key=lambda s: s.rating, reverse=True)[:limit]
-    
-    def get_most_active_agents(self, limit: int = 10) -> List[Agent]:
+
+    def get_most_active_agents(self, limit: int = 10) -> list[Agent]:
         """Get most active agents (most completed tasks)"""
         return sorted(
             list(self._agents.values()),
             key=lambda a: a.completed_tasks,
             reverse=True,
         )[:limit]
-    
-    def get_trending_skills(self, limit: int = 10) -> List[Skill]:
+
+    def get_trending_skills(self, limit: int = 10) -> list[Skill]:
         """Get trending skills (recently popular)"""
         # Sort by recent review activity
         return sorted(
@@ -443,14 +443,14 @@ class DiscoverySkill:
             key=lambda s: s.review_count,
             reverse=True,
         )[:limit]
-    
+
     # ============ Recommendations ============
-    
+
     def get_recommended_agents(
         self,
-        user_preferences: Dict[str, Any],
+        user_preferences: dict[str, Any],
         limit: int = 5,
-    ) -> List[Agent]:
+    ) -> list[Agent]:
         """
         Get personalized agent recommendations.
         
@@ -463,62 +463,62 @@ class DiscoverySkill:
         """
         preferences = user_preferences.get("categories", [])
         budget = user_preferences.get("max_budget", float('inf'))
-        
+
         candidates = list(self._agents.values())
-        
+
         if preferences:
             candidates = [
                 a for a in candidates
                 if any(s.category in preferences for s in a.skills)
             ]
-        
+
         # Filter by budget
         candidates = [
             a for a in candidates
             if min([s.price_per_task for s in a.skills] or [float('inf')]) <= budget
         ]
-        
+
         # Score by rating and activity
         scored = [
             (a, a.rating * 0.6 + min(a.completed_tasks / 100, 1.0) * 0.4)
             for a in candidates
         ]
         scored.sort(key=lambda x: x[1], reverse=True)
-        
+
         return [a for a, _ in scored[:limit]]
-    
-    def get_similar_agents(self, agent_address: str, limit: int = 5) -> List[Agent]:
+
+    def get_similar_agents(self, agent_address: str, limit: int = 5) -> list[Agent]:
         """Get agents similar to a given agent"""
         agent = self._agents.get(agent_address)
         if not agent:
             return []
-        
+
         agent_skills = set(s.category for s in agent.skills)
-        
+
         # Find agents with overlapping skills
         similar = []
         for other in self._agents.values():
             if other.address == agent_address:
                 continue
-            
+
             other_skills = set(s.category for s in other.skills)
             overlap = len(agent_skills & other_skills)
-            
+
             if overlap > 0:
                 similar.append((other, overlap, other.rating))
-        
+
         # Sort by overlap and rating
         similar.sort(key=lambda x: (x[1], x[2]), reverse=True)
-        
+
         return [a for a, _, _ in similar[:limit]]
-    
+
     # ============ Stats ============
-    
-    def get_marketplace_stats(self) -> Dict[str, Any]:
+
+    def get_marketplace_stats(self) -> dict[str, Any]:
         """Get marketplace statistics"""
         agents = list(self._agents.values())
         skills = list(self._skills.values())
-        
+
         return {
             "total_agents": len(agents),
             "total_skills": len(skills),
@@ -527,9 +527,9 @@ class DiscoverySkill:
             "available_agents": len([a for a in agents if a.status == "available"]),
             "categories": len(set(s.category for s in skills)),
         }
-    
+
     # ============ Export ============
-    
+
     def export_agents_json(self, agent_address: str = None) -> str:
         """Export agents as JSON"""
         if agent_address:
@@ -537,16 +537,16 @@ class DiscoverySkill:
             data = [agent.to_dict()] if agent else []
         else:
             data = [a.to_dict() for a in self._agents.values()]
-        
+
         return json.dumps(data, indent=2)
-    
+
     def export_skills_json(self, category: str = None) -> str:
         """Export skills as JSON"""
         skills = list(self._skills.values())
-        
+
         if category:
             skills = [s for s in skills if s.category == category]
-        
+
         return json.dumps([s.to_dict() for s in skills], indent=2)
 
 
