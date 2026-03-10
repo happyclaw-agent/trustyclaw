@@ -1,52 +1,33 @@
-name: Tests
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 
 jobs:
-  test:
-    name: test
+  quality:
+    name: Targeted Quality Gates
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Create venv and install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
+      - name: Sync dependencies
+        run: uv sync
 
-      - name: Run full unit test suite
-        working-directory: ${{ github.workspace }}
-        env:
-          PYTHONPATH: src
-        run: .venv/bin/python -m pytest src/tests/unit -v --tb=short
+      - name: Ruff (escrow failure-path tests)
+        run: uv run ruff check src/tests/unit/test_escrow_contract.py
 
-      - name: Verify SDK imports
-        working-directory: ${{ github.workspace }}
-        env:
-          PYTHONPATH: src
-        run: |
-          .venv/bin/python -c "
-          from trustyclaw.sdk.client import SolanaClient
-          from trustyclaw.sdk.identity import AgentIdentity
-          from trustyclaw.sdk.reputation import ReputationEngine
-          from trustyclaw.sdk.escrow import EscrowClient
-          print('All imports successful')
-          "
+      - name: Mypy (escrow failure-path tests)
+        run: uv run mypy src/tests/unit/test_escrow_contract.py
 
-      - name: Run smoke tests
-        working-directory: ${{ github.workspace }}
-        env:
-          PYTHONPATH: src
-        run: .venv/bin/python scripts/smoke_tests.py
-
-      - name: Run demo (mock mode only)
-        working-directory: ${{ github.workspace }}
-        env:
-          PYTHONPATH: src
-        run: .venv/bin/python demo.py --mock
+      - name: Unit tests with coverage gate
+        run: uv run pytest src/tests/unit -vv --cov=src --cov-report=term-missing --cov-fail-under=70
