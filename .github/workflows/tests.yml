@@ -14,24 +14,27 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Create venv and install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements.txt
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Run ruff
+        run: uv run ruff check .
 
       - name: Run full unit test suite
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
-        run: .venv/bin/python -m pytest src/tests/unit -v --tb=short
+        run: uv run pytest src/tests/unit -v --tb=short
 
       - name: Verify SDK imports
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
         run: |
-          .venv/bin/python -c "
+          uv run python -c "
           from trustyclaw.sdk.client import SolanaClient
           from trustyclaw.sdk.identity import AgentIdentity
           from trustyclaw.sdk.reputation import ReputationEngine
@@ -43,10 +46,10 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
-        run: .venv/bin/python scripts/smoke_tests.py
+        run: uv run python scripts/smoke_tests.py
 
       - name: Run demo (mock mode only)
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
-        run: .venv/bin/python demo.py --mock
+        run: uv run python demo.py --mock
