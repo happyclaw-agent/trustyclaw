@@ -33,6 +33,8 @@ from enum import Enum
 from typing import Optional, Any
 import os
 
+from trustyclaw.sdk.retry import retry_with_exponential_backoff
+
 
 class Network(Enum):
     """Solana network types"""
@@ -48,6 +50,10 @@ class ClientConfig:
     rpc_url: Optional[str] = None
     ws_url: Optional[str] = None
     commitment: str = "confirmed"
+    max_retries: int = 3
+    backoff_base_seconds: float = 0.2
+    backoff_max_seconds: float = 2.0
+    backoff_jitter_seconds: float = 0.05
 
 
 class SolanaClient:
@@ -94,6 +100,56 @@ class SolanaClient:
             self.rpc_url = env_url
         
         self.commitment = self.config.commitment
+
+    @staticmethod
+    def _is_retryable_exception(exc: Exception) -> bool:
+        import httpx
+
+        if isinstance(exc, (httpx.TransportError, httpx.TimeoutException)):
+            return True
+        if isinstance(exc, httpx.HTTPStatusError):
+            status_code = exc.response.status_code
+            return status_code == 429 or status_code >= 500
+        if isinstance(exc, RuntimeError):
+            message = str(exc).lower()
+            return (
+                "too many requests" in message
+                or "rate limit" in message
+                or "timeout" in message
+                or "temporarily unavailable" in message
+                or "node is behind" in message
+                or "block not available" in message
+            )
+        return False
+
+    async def _rpc_request(self, method: str, params: list[Any]) -> dict[str, Any]:
+        import httpx
+
+        async def do_request() -> dict[str, Any]:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": method,
+                        "params": params,
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+                if "error" in payload:
+                    raise RuntimeError(f"RPC error: {payload['error']}")
+                return payload
+
+        return await retry_with_exponential_backoff(
+            do_request,
+            max_retries=self.config.max_retries,
+            base_delay_seconds=self.config.backoff_base_seconds,
+            max_delay_seconds=self.config.backoff_max_seconds,
+            jitter_seconds=self.config.backoff_jitter_seconds,
+            is_retryable=self._is_retryable_exception,
+        )
     
     async def get_balance(self, address: str) -> int:
         """
@@ -108,23 +164,8 @@ class SolanaClient:
         Raises:
             ConnectionError: If RPC call fails
         """
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getBalance",
-                    "params": [address],
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return result["result"]["value"]
+        result = await self._rpc_request("getBalance", [address])
+        return result["result"]["value"]
     
     async def get_account_info(self, address: str) -> Optional[dict]:
         """
@@ -139,23 +180,11 @@ class SolanaClient:
         Raises:
             ConnectionError: If RPC call fails
         """
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getAccountInfo",
-                    "params": [address, {"commitment": self.commitment}],
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return result["result"]["value"]
+        result = await self._rpc_request(
+            "getAccountInfo",
+            [address, {"commitment": self.commitment}],
+        )
+        return result["result"]["value"]
     
     async def get_latest_blockhash(self) -> str:
         """
@@ -167,23 +196,11 @@ class SolanaClient:
         Raises:
             ConnectionError: If RPC call fails
         """
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getLatestBlockhash",
-                    "params": [{"commitment": self.commitment}],
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return result["result"]["value"]["blockhash"]
+        result = await self._rpc_request(
+            "getLatestBlockhash",
+            [{"commitment": self.commitment}],
+        )
+        return result["result"]["value"]["blockhash"]
     
     async def send_transaction(
         self,
@@ -204,29 +221,18 @@ class SolanaClient:
             ConnectionError: If RPC call fails
         """
         import base64
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "sendTransaction",
-                    "params": [
-                        base64.b64encode(transaction).decode(),
-                        {
-                            "encoding": "base64",
-                            "commitment": self.commitment,
-                        },
-                    ],
+
+        result = await self._rpc_request(
+            "sendTransaction",
+            [
+                base64.b64encode(transaction).decode(),
+                {
+                    "encoding": "base64",
+                    "commitment": self.commitment,
                 },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return result["result"]
+            ],
+        )
+        return result["result"]
     
     async def get_token_balance(
         self,
@@ -243,23 +249,11 @@ class SolanaClient:
         Returns:
             Token balance in raw units (not decimals)
         """
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getTokenAccountBalance",
-                    "params": [token_account, {"commitment": self.commitment}],
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return int(result["result"]["value"]["amount"])
+        result = await self._rpc_request(
+            "getTokenAccountBalance",
+            [token_account, {"commitment": self.commitment}],
+        )
+        return int(result["result"]["value"]["amount"])
     
     async def get_token_accounts_by_owner(
         self,
@@ -276,27 +270,12 @@ class SolanaClient:
         Returns:
             List of token account dicts
         """
-        import httpx
-        
-        async with httpx.AsyncClient() as client:
-            params = [{"commitment": self.commitment}]
-            if mint:
-                params.append({"mint": mint})
-            
-            response = await client.post(
-                self.rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getTokenAccountsByOwner",
-                    "params": [owner] + params,
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            if "error" in result:
-                raise RuntimeError(f"RPC error: {result['error']}")
-            return result["result"]["value"]
+        params = [{"commitment": self.commitment}]
+        if mint:
+            params.append({"mint": mint})
+
+        result = await self._rpc_request("getTokenAccountsByOwner", [owner] + params)
+        return result["result"]["value"]
     
     def derive_pda(
         self,
