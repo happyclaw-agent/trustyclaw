@@ -3,6 +3,9 @@
 Date: 2026-03-10
 Reviewer: Nullius
 
+## Executive summary
+TrustyClaw’s highest-risk gaps are dependency/tooling drift and escrow SDK boundary correctness. The immediate path to reduce delivery and security risk is: (1) finish uv-first packaging + CI standardization, (2) split and harden escrow modules with clear interfaces, and (3) enforce reliability/security CI gates with coverage and failure-path tests. These three actions are sequenced to first stabilize the build surface, then reduce core payment-path complexity, then lock quality with automated gates.
+
 ## Scope
 - Reviewed project structure, packaging metadata, CI workflow, and core SDK modules.
 - Attempted local test run with `uv run`.
@@ -85,7 +88,7 @@ uv run --with pytest pytest src/tests/unit -vv
 ```
 Result: collection interrupted with missing dependencies (`solana`, `pydantic`) under uv-run context; confirms dependency/tooling drift.
 
-## Suggested follow-up tasks
-1. `P0`: Migrate packaging + CI to uv (`pyproject` PEP 621 + lockfile + requires-python).
-2. `P0`: Refactor escrow SDK boundaries and remove duplicate definitions.
-3. `P1`: Add CI quality/security gates and failure-path tests for escrow/reputation modules.
+## Suggested follow-up tasks (with owners)
+1. `P0` — **Owner: Nullius**: Migrate packaging + CI to uv (`pyproject` PEP 621 + lockfile + requires-python).
+2. `P0` — **Owner: Nullius**: Refactor escrow SDK boundaries and remove duplicate definitions.
+3. `P1` — **Owner: Nullius**: Add CI quality/security gates and failure-path tests for escrow/reputation modules.
