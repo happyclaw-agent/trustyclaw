@@ -65,6 +65,16 @@ balance = usdc.get_balance(address)
 transfer = usdc.transfer(from_addr, to_addr, amount)
 ```
 
+#### Transfer Amount Limits
+
+`USDCPaymentService.create_payment_intent` currently enforces:
+- **Minimum:** `1_000` microUSDC (`0.001 USDC`)
+- **Maximum:** not hard-enforced in code yet for generic wallet-to-wallet transfers
+
+Operational guidance for apps using this SDK:
+- Keep single-transfer amounts at or below **`10_000_000_000` microUSDC (`10,000 USDC`)** unless you add custom validation.
+- For high-value flows, configure multisig (`MultisigConfig`) and explicit application-level caps.
+
 ## Escrow Program (On-Chain)
 
 On-chain escrow states are **Created → Funded → Completed** (or **Cancelled**). Dispute resolution is planned for a future release.
