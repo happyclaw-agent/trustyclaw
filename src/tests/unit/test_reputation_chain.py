@@ -137,15 +137,36 @@ class TestReputationPDAProgram:
         assert 0 <= reputation.reputation_score <= 100
         assert 0 <= reputation.average_rating <= 5
     
-    def test_create_reputation_account(self, program):
-        """Test creating reputation account"""
-        result = program.create_reputation_account(
+    def test_init_reputation_account(self, program):
+        """Test initializing reputation account"""
+        result = program.init_reputation_account(
             agent_address="GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q",
             payer_address="payer",
         )
         assert result["success"] is True
         assert "pda" in result
         assert "signature" in result
+        assert result["signature"].startswith("init-rep-")
+
+    def test_create_reputation_account_alias(self, program):
+        """Test create method delegates to init flow"""
+        with patch.object(program, "init_reputation_account") as mock_init:
+            mock_init.return_value = {
+                "success": True,
+                "pda": "rep-00001",
+                "signature": "init-rep-rep-00001",
+            }
+
+            result = program.create_reputation_account(
+                agent_address="agent",
+                payer_address="payer",
+            )
+
+            mock_init.assert_called_once_with(
+                agent_address="agent",
+                payer_address="payer",
+            )
+            assert result["success"] is True
     
     def test_update_reputation(self, program):
         """Test updating reputation"""

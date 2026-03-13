@@ -225,13 +225,13 @@ class ReputationPDAProgram:
             last_updated=int(datetime.utcnow().timestamp()),
         )
     
-    def create_reputation_account(
+    def init_reputation_account(
         self,
         agent_address: str,
         payer_address: str,
     ) -> Dict[str, Any]:
         """
-        Create reputation account for an agent.
+        Initialize an agent reputation PDA account.
         
         Args:
             agent_address: Agent's wallet address
@@ -246,7 +246,7 @@ class ReputationPDAProgram:
             return {
                 "success": True,
                 "pda": pda,
-                "signature": f"create-rep-{pda[:16]}",
+                "signature": f"init-rep-{pda[:16]}",
             }
         
         try:
@@ -254,10 +254,21 @@ class ReputationPDAProgram:
             return {
                 "success": True,
                 "pda": pda,
-                "signature": f"create-rep-{pda[:16]}",
+                "signature": f"init-rep-{pda[:16]}",
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+    
+    def create_reputation_account(
+        self,
+        agent_address: str,
+        payer_address: str,
+    ) -> Dict[str, Any]:
+        """Backward-compatible alias for `init_reputation_account`."""
+        return self.init_reputation_account(
+            agent_address=agent_address,
+            payer_address=payer_address,
+        )
     
     def update_reputation(
         self,
