@@ -1,38 +1,42 @@
-[tool.poetry]
+[project]
 name = "trustyclaw"
 version = "0.1.0"
 description = "TrustyClaw - Autonomous Reputation Layer for Agent Skills"
-authors = ["happyclaw-agent <happytreeiot@gmail.com>"]
-license = "MIT"
 readme = "README.md"
-packages = [{include = "src/trustyclaw"}]
+requires-python = ">=3.11"
+authors = [{ name = "happyclaw-agent", email = "happytreeiot@gmail.com" }]
+license = { text = "MIT" }
+dependencies = [
+  "solana>=0.35,<0.37",
+  "solders>=0.21.0",
+  "pydantic>=2.5.0",
+  "PyYAML>=6.0",
+  "requests>=2.31.0",
+  "python-dotenv>=1.0.0",
+  "httpx>=0.26.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-solana = "^0.35"
-spl-token = "^0.5.0"
-pydantic = "^2.5.0"
-pyyaml = "^6.0"
-requests = "^2.31.0"
-python-dotenv = "^1.0.0"
-httpx = "^0.26.0"
-pytest = "^8.0.0"
-pytest-cov = "^4.1.0"
-black = "^24.0.0"
-ruff = "^0.2.0"
-mypy = "^1.8.0"
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.6.0"
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=4.1.0",
+  "black>=24.0.0",
+  "ruff>=0.2.0",
+  "mypy>=1.8.0",
+  "pre-commit>=3.6.0",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.24.2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trustyclaw"]
 
 [tool.black]
 line-length = 100
 target-version = ['py311']
-include = '\.pyi?$'
+include = '\\.pyi?$'
 
 [tool.ruff]
 line-length = 100
