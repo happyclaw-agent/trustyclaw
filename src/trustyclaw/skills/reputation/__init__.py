@@ -66,15 +66,19 @@ class ReputationMetrics:
     @classmethod
     def from_on_chain(cls, data: ReputationScoreData) -> 'ReputationMetrics':
         """Create from on-chain data"""
+        positive_reviews = getattr(data, "positive_votes", getattr(data, "positive_reviews", 0))
+        negative_reviews = getattr(data, "negative_votes", getattr(data, "negative_reviews", 0))
+        updated_at = getattr(data, "updated_at", getattr(data, "last_updated", 0))
+
         return cls(
             agent_address=data.agent_address,
             reputation_score=data.reputation_score,
             average_rating=data.average_rating,
             total_reviews=data.total_reviews,
             on_time_percentage=data.on_time_percentage,
-            positive_reviews=data.positive_votes,
-            negative_reviews=data.negative_votes,
-            last_updated=datetime.fromtimestamp(data.updated_at).isoformat() if data.updated_at > 0 else None,
+            positive_reviews=positive_reviews,
+            negative_reviews=negative_reviews,
+            last_updated=datetime.fromtimestamp(updated_at).isoformat() if updated_at > 0 else None,
             on_chain_data=data,
         )
 

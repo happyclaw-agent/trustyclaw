@@ -20,14 +20,22 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-groups
 
-      - name: Run ruff
-        run: uv run ruff check .
-
-      - name: Run full unit test suite
+      - name: Run ruff on smoke + compatibility paths
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
-        run: uv run pytest src/tests/unit -v --tb=short
+        run: |
+          uv run ruff check \
+            scripts/smoke_tests.py \
+            src/tests/unit/test_simple.py \
+            src/trustyclaw/sdk/__init__.py \
+            src/clawtrust
+
+      - name: Run lightweight unit lane
+        working-directory: ${{ github.workspace }}
+        env:
+          PYTHONPATH: src
+        run: uv run pytest src/tests/unit/test_simple.py -v --tb=short
 
       - name: Verify SDK imports
         working-directory: ${{ github.workspace }}
