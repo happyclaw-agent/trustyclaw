@@ -454,3 +454,11 @@ def get_reputation_program(network: str = "devnet") -> ReputationPDAProgram:
         network=network,
         program_id=program_id,
     )
+
+
+# Backward-compatible aliases
+ReputationChainSDK = ReputationPDAProgram
+
+
+def get_reputation_chain(network: str = "devnet") -> ReputationPDAProgram:
+    return get_reputation_program(network)
