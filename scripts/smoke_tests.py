@@ -22,9 +22,13 @@ _src = os.path.join(_repo_root, "src")
 if _src not in sys.path:
     sys.path.insert(0, _src)
 
-from trustyclaw.sdk.escrow import EscrowClient, EscrowState, EscrowTerms
-from trustyclaw.sdk.identity import AgentIdentity, IdentityManager, IdentityStatus
-from trustyclaw.sdk.reputation import ReputationEngine, Review
+from trustyclaw.sdk.escrow import EscrowClient, EscrowState, EscrowTerms  # noqa: E402
+from trustyclaw.sdk.identity import (  # noqa: E402
+    AgentIdentity,
+    IdentityManager,
+    IdentityStatus,
+)
+from trustyclaw.sdk.reputation import ReputationEngine, Review  # noqa: E402
 
 
 def test_imports():

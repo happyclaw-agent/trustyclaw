@@ -55,7 +55,7 @@ def test_identity_from_dict():
 
 # Test reputation create
 def test_reputation_create():
-    from trustyclaw.sdk.reputation import ReputationEngine, Review
+    from trustyclaw.sdk.reputation import ReputationEngine
     engine = ReputationEngine()
     assert engine is not None
     print("✓ test_reputation_create passed")
@@ -140,10 +140,10 @@ if __name__ == "__main__":
         test_escrow_client,
         test_create_escrow_terms,
     ]
-    
+
     passed = 0
     failed = 0
-    
+
     for test in tests:
         try:
             test()
@@ -151,8 +151,8 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"✗ {test.__name__} failed: {e}")
             failed += 1
-    
+
     print(f"\n{passed}/{len(tests)} tests passed")
-    
+
     if failed > 0:
         exit(1)

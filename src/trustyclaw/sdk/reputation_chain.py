@@ -4,20 +4,18 @@ On-Chain Reputation Storage for TrustyClaw
 Stores reputation scores and reviews in Solana PDA accounts.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 import hashlib
 import struct
+from typing import Any
 
 try:
     from solana.rpc.api import Client as SolanaClient
-    from solana.rpc.commitment import Confirmed, Finalized
     from solana.keypair import Keypair
     from solana.publickey import PublicKey
+    from solana.system_program import CreateAccountParams, create_account
     from solana.transaction import Transaction
-    from solana.system_program import create_account, CreateAccountParams
     HAS_SOLANA = True
 except ImportError:
     HAS_SOLANA = False

@@ -4,6 +4,7 @@ Keep package import lightweight so smoke tests and basic consumers can import
 `trustyclaw.sdk.*` without requiring every optional blockchain dependency.
 """
 
+from .escrow import EscrowClient, EscrowState, EscrowTerms, create_escrow_terms
 from .identity import AgentIdentity, IdentityManager, IdentityStatus
 from .reputation import ReputationEngine, ReputationScore, Review
 from .reputation_chain import (
@@ -13,7 +14,6 @@ from .reputation_chain import (
     ReviewData,
     get_reputation_chain,
 )
-from .escrow import EscrowClient, EscrowState, EscrowTerms, create_escrow_terms
 
 __all__ = [
     "AgentIdentity",
