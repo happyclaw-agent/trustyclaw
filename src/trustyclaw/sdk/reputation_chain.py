@@ -82,7 +82,7 @@ class ReviewData:
     def to_bytes(self) -> bytes:
         """Serialize to bytes"""
         return struct.pack(
-            '<32s32s32s32sIII32sI',
+            '<32s32s32s32sIIII32sI',
             self.review_id.encode('utf-8')[:32].ljust(32, b'\0'),
             self.provider.encode('utf-8')[:32].ljust(32, b'\0'),
             self.renter.encode('utf-8')[:32].ljust(32, b'\0'),
@@ -98,7 +98,7 @@ class ReviewData:
     @classmethod
     def from_bytes(cls, data: bytes) -> 'ReviewData':
         """Deserialize from bytes"""
-        unpacked = struct.unpack('<32s32s32s32sIII32sI', data)
+        unpacked = struct.unpack('<32s32s32s32sIIII32sI', data)
         return cls(
             review_id=unpacked[0].decode('utf-8').rstrip('\0'),
             provider=unpacked[1].decode('utf-8').rstrip('\0'),
