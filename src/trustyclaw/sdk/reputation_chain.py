@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 import struct
-from typing import Any
+from typing import Any, Optional
 
 try:
     from solana.rpc.api import Client as SolanaClient
