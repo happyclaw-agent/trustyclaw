@@ -4,11 +4,11 @@ Matching Models for TrustyClaw
 Data models for ML-based agent-skill matching.
 """
 
+import uuid
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
-import uuid
+from typing import Any
 
 
 class ComplexityLevel(Enum):
@@ -26,19 +26,19 @@ class TaskRequirements:
     task_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     title: str = ""
     description: str = ""
-    required_skills: List[str] = field(default_factory=list)
+    required_skills: list[str] = field(default_factory=list)
     category: str = ""
     complexity: float = 0.5  # 0.0 to 1.0
     complexity_level: ComplexityLevel = ComplexityLevel.MODERATE
     estimated_hours: int = 1
     priority: int = 1  # 1-5, higher = more urgent
-    constraints: Dict[str, Any] = field(default_factory=dict)
+    constraints: dict[str, Any] = field(default_factory=dict)
     preferred_agent_rating: float = 0.0
-    max_budget: Optional[int] = None
-    deadline: Optional[datetime] = None
+    max_budget: int | None = None
+    deadline: datetime | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "title": self.title,
@@ -65,12 +65,12 @@ class RenterHistory:
     completed_tasks: int = 0
     average_rating_given: float = 0.0
     total_spent: int = 0  # USDC lamports
-    preferred_categories: List[str] = field(default_factory=list)
+    preferred_categories: list[str] = field(default_factory=list)
     average_task_complexity: float = 0.5
-    last_active: Optional[datetime] = None
+    last_active: datetime | None = None
     repeat_hire_rate: float = 0.0  # Rate of hiring same agent multiple times
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "renter_address": self.renter_address,
             "total_tasks": self.total_tasks,
@@ -92,13 +92,13 @@ class SkillMatch:
     skill_name: str = ""
     match_score: float = 0.0  # 0.0 to 1.0
     skill_coverage: float = 0.0  # Percentage of required skills covered
-    missing_skills: List[str] = field(default_factory=list)
+    missing_skills: list[str] = field(default_factory=list)
     rating: float = 0.0
     completed_tasks: int = 0
     price_per_task: int = 0
     estimated_duration_hours: int = 0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "agent_address": self.agent_address,
@@ -119,15 +119,15 @@ class AgentRecommendation:
     agent_address: str = ""
     agent_name: str = ""
     overall_score: float = 0.0  # Combined match score
-    skill_matches: List[SkillMatch] = field(default_factory=list)
+    skill_matches: list[SkillMatch] = field(default_factory=list)
     compatibility_score: float = 0.0  # Based on renter history
     price_prediction: float = 0.0  # Predicted price in USDC lamports
     estimated_delivery_hours: int = 0
     confidence: float = 0.0  # 0.0 to 1.0
-    reasons: List[str] = field(default_factory=list)
-    risk_factors: List[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    reasons: list[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_address": self.agent_address,
             "agent_name": self.agent_name,
@@ -150,11 +150,11 @@ class PricePrediction:
     price_range_low: int = 0
     price_range_high: int = 0
     confidence: float = 0.0
-    factors: Dict[str, float] = field(default_factory=dict)  # Breakdown of factors
+    factors: dict[str, float] = field(default_factory=dict)  # Breakdown of factors
     market_average: int = 0
     recommendation: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "predicted_price": self.predicted_price,
@@ -176,9 +176,9 @@ class TimeEstimate:
     latest_hours: int = 0
     current_queue: int = 0
     confidence: float = 0.0
-    factors: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    factors: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_address": self.agent_address,
             "estimated_hours": self.estimated_hours,
@@ -197,10 +197,10 @@ class DemandForecast:
     current_demand: float = 0.0  # 0.0 to 1.0
     predicted_demand: float = 0.0
     trend: str = "stable"  # rising, stable, declining
-    peak_hours: List[int] = field(default_factory=list)  # Hours of day (0-23)
+    peak_hours: list[int] = field(default_factory=list)  # Hours of day (0-23)
     seasonal_factor: float = 1.0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "current_demand": self.current_demand,
@@ -220,8 +220,8 @@ class MatchingMetrics:
     price_accuracy: float = 0.0  # % of predictions within 20% of actual
     delivery_accuracy: float = 0.0  # % of estimates within 20% of actual
     user_satisfaction: float = 0.0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_matches": self.total_matches,
             "average_score": self.average_score,

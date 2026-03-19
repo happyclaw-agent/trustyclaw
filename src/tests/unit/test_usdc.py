@@ -5,8 +5,9 @@ Uses trustyclaw.sdk.usdc (PYTHONPATH=src). When client has no RPC (HAS_SOLANA Fa
 get_balance returns 0.0 and find_associated_token_account returns None.
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 
 class TestUSDCClient:
@@ -139,7 +140,7 @@ class TestGetUSDCClient:
 
     def test_get_client_mainnet(self):
         """Test getting mainnet client"""
-        from trustyclaw.sdk.usdc import get_usdc_client, USDCClient
+        from trustyclaw.sdk.usdc import USDCClient, get_usdc_client
 
         client = get_usdc_client("mainnet")
         assert client.network == "mainnet"

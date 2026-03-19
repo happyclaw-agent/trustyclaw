@@ -6,10 +6,8 @@ Supports Solana, Ethereum, Polygon, and Arbitrum.
 """
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, List, Optional, Union
 from datetime import datetime
-import os
+from enum import Enum
 
 
 class Chain(Enum):
@@ -31,12 +29,12 @@ class Token(Enum):
 @dataclass
 class UnionWallet:
     """Unified wallet across chains"""
-    solana: Optional[str] = None
-    ethereum: Optional[str] = None
-    polygon: Optional[str] = None
-    arbitrum: Optional[str] = None
-    
-    def get_address(self, chain: Chain) -> Optional[str]:
+    solana: str | None = None
+    ethereum: str | None = None
+    polygon: str | None = None
+    arbitrum: str | None = None
+
+    def get_address(self, chain: Chain) -> str | None:
         """Get address for a specific chain"""
         if chain == Chain.SOLANA:
             return self.solana
@@ -47,8 +45,8 @@ class UnionWallet:
         elif chain == Chain.ARBITRUM:
             return self.arbitrum
         return None
-    
-    def get_chains(self) -> List[Chain]:
+
+    def get_chains(self) -> list[Chain]:
         """Get list of chains with addresses"""
         chains = []
         if self.solana:
@@ -77,8 +75,8 @@ class ChainBalance:
 class AggregatedBalance:
     """Aggregated balance across all chains"""
     total_usd_value: float
-    balances: Dict[str, ChainBalance]  # chain -> balance
-    breakdown: Dict[str, float]  # chain -> percentage
+    balances: dict[str, ChainBalance]  # chain -> balance
+    breakdown: dict[str, float]  # chain -> percentage
     last_updated: datetime
 
 
@@ -101,7 +99,7 @@ class UnifiedBalance:
         balances = unified.get_all_balances([wallet])
         total = unified.get_total_value(wallet, prices)
     """
-    
+
     # Token decimals
     DECIMALS = {
         Token.USDC: 6,
@@ -109,7 +107,7 @@ class UnifiedBalance:
         Token.ETH: 18,
         Token.MATIC: 18,
     }
-    
+
     # Mock balances for devnet
     MOCK_BALANCES = {
         Chain.SOLANA: {
@@ -129,7 +127,7 @@ class UnifiedBalance:
             Token.ETH: 1.0,
         },
     }
-    
+
     def __init__(self, network: str = "devnet"):
         """
         Initialize unified balance client.
@@ -138,7 +136,7 @@ class UnifiedBalance:
             network: Network mode ('devnet', 'testnet', 'mainnet')
         """
         self.network = network
-    
+
     def _get_mock_balance(
         self,
         chain: Chain,
@@ -149,12 +147,12 @@ class UnifiedBalance:
         if chain in self.MOCK_BALANCES:
             if token in self.MOCK_BALANCES[chain]:
                 return self.MOCK_BALANCES[chain][token]
-        
+
         # Return a consistent mock based on address
         if wallet_address:
             return float(len(wallet_address) * 10)
         return 0.0
-    
+
     def _get_real_balance(
         self,
         chain: Chain,
@@ -168,7 +166,7 @@ class UnifiedBalance:
         """
         # In mainnet, would query actual RPC endpoints
         return self._get_mock_balance(chain, token, wallet_address)
-    
+
     def get_balance(
         self,
         chain: Chain,
@@ -190,11 +188,11 @@ class UnifiedBalance:
             return self._get_real_balance(chain, token, wallet_address)
         else:
             return self._get_mock_balance(chain, token, wallet_address)
-    
+
     def get_all_balances(
         self,
-        wallets: List[UnionWallet],
-    ) -> Dict[str, float]:
+        wallets: list[UnionWallet],
+    ) -> dict[str, float]:
         """
         Get all USDC balances across all chains.
         
@@ -204,27 +202,27 @@ class UnifiedBalance:
         Returns:
             Dict mapping chain name to total balance
         """
-        balances: Dict[str, float] = {
+        balances: dict[str, float] = {
             Chain.SOLANA.value: 0.0,
             Chain.ETHEREUM.value: 0.0,
             Chain.POLYGON.value: 0.0,
             Chain.ARBITRUM.value: 0.0,
         }
-        
+
         for wallet in wallets:
             for chain in wallet.get_chains():
                 address = wallet.get_address(chain)
                 if address:
                     balance = self.get_balance(chain, Token.USDC, address)
                     balances[chain.value] += balance
-        
+
         return balances
-    
+
     def get_chain_balances(
         self,
         wallet: UnionWallet,
-        tokens: List[Token] = None,
-    ) -> Dict[str, ChainBalance]:
+        tokens: list[Token] = None,
+    ) -> dict[str, ChainBalance]:
         """
         Get detailed balances for all chains and tokens.
         
@@ -237,18 +235,18 @@ class UnifiedBalance:
         """
         if tokens is None:
             tokens = [Token.USDC]
-        
-        balances: Dict[str, ChainBalance] = {}
-        
+
+        balances: dict[str, ChainBalance] = {}
+
         for chain in wallet.get_chains():
             address = wallet.get_address(chain)
             if not address:
                 continue
-            
+
             for token in tokens:
                 balance = self.get_balance(chain, token, address)
                 raw_balance = int(balance * (10 ** self.DECIMALS[token]))
-                
+
                 balances[chain.value] = ChainBalance(
                     chain=chain,
                     token=token,
@@ -257,13 +255,13 @@ class UnifiedBalance:
                     usd_value=balance,  # USDC is 1:1 with USD
                     last_updated=datetime.utcnow(),
                 )
-        
+
         return balances
-    
+
     def get_total_value(
         self,
-        wallets: List[UnionWallet],
-        prices: Dict[str, float] = None,
+        wallets: list[UnionWallet],
+        prices: dict[str, float] = None,
     ) -> float:
         """
         Get total portfolio value in USD.
@@ -283,19 +281,19 @@ class UnifiedBalance:
                 "ETH": 2500.0,
                 "MATIC": 0.8,
             }
-        
+
         total = 0.0
-        
+
         for wallet in wallets:
             for chain in wallet.get_chains():
                 address = wallet.get_address(chain)
                 if not address:
                     continue
-                
+
                 # Get USDC balance (1:1 with USD)
                 usdc_balance = self.get_balance(chain, Token.USDC, address)
                 total += usdc_balance * prices.get("USDC", 1.0)
-                
+
                 # Get native token balance
                 if chain == Chain.SOLANA:
                     native_balance = self.get_balance(chain, Token.SOL, address)
@@ -309,14 +307,14 @@ class UnifiedBalance:
                 elif chain == Chain.ARBITRUM:
                     native_balance = self.get_balance(chain, Token.ETH, address)
                     total += native_balance * prices.get("ETH", 2500.0)
-        
+
         return total
-    
+
     def get_allocation(
         self,
-        wallets: List[UnionWallet],
-        prices: Dict[str, float] = None,
-    ) -> Dict[str, float]:
+        wallets: list[UnionWallet],
+        prices: dict[str, float] = None,
+    ) -> dict[str, float]:
         """
         Get portfolio allocation percentages.
         
@@ -328,7 +326,7 @@ class UnifiedBalance:
             Dict mapping chain to percentage of total
         """
         total_value = self.get_total_value(wallets, prices)
-        
+
         if total_value == 0:
             return {
                 Chain.SOLANA.value: 0.0,
@@ -336,19 +334,19 @@ class UnifiedBalance:
                 Chain.POLYGON.value: 0.0,
                 Chain.ARBITRUM.value: 0.0,
             }
-        
+
         balances = self.get_all_balances(wallets)
-        
-        allocation: Dict[str, float] = {}
+
+        allocation: dict[str, float] = {}
         for chain, balance in balances.items():
             allocation[chain] = (balance / total_value) * 100
-        
+
         return allocation
-    
+
     def get_aggregated_balance(
         self,
-        wallets: List[UnionWallet],
-        prices: Dict[str, float] = None,
+        wallets: list[UnionWallet],
+        prices: dict[str, float] = None,
     ) -> AggregatedBalance:
         """
         Get complete aggregated balance view.
@@ -363,25 +361,25 @@ class UnifiedBalance:
         balances = self.get_all_balances(wallets)
         total_value = self.get_total_value(wallets, prices)
         allocation = self.get_allocation(wallets, prices)
-        
-        chain_balances: Dict[str, ChainBalance] = {}
+
+        chain_balances: dict[str, ChainBalance] = {}
         for wallet in wallets:
             chain_details = self.get_chain_balances(wallet)
             for chain, cb in chain_details.items():
                 if chain not in chain_balances:
                     chain_balances[chain] = cb
-        
+
         return AggregatedBalance(
             total_usd_value=total_value,
             balances=chain_balances,
             breakdown=allocation,
             last_updated=datetime.utcnow(),
         )
-    
+
     def compare_wallets(
         self,
-        wallets: List[UnionWallet],
-    ) -> Dict[str, Dict[str, float]]:
+        wallets: list[UnionWallet],
+    ) -> dict[str, dict[str, float]]:
         """
         Compare balances across multiple wallets.
         
@@ -391,15 +389,15 @@ class UnifiedBalance:
         Returns:
             Dict of wallet index -> chain balances
         """
-        results: Dict[str, Dict[str, float]] = {}
-        
+        results: dict[str, dict[str, float]] = {}
+
         for i, wallet in enumerate(wallets):
             balances = self.get_all_balances([wallet])
             results[f"wallet_{i}"] = balances
-        
+
         return results
-    
-    def get_supported_chains(self) -> List[Chain]:
+
+    def get_supported_chains(self) -> list[Chain]:
         """Get list of supported chains"""
         return [
             Chain.SOLANA,

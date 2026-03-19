@@ -1,7 +1,6 @@
 """Tests for Identity Module"""
 
 import pytest
-from pydantic import ValidationError
 
 from trustyclaw.sdk.identity import (
     AgentIdentity,

@@ -16,14 +16,13 @@ Usage:
     >>> # Engine monitors and auto-executes in background
 """
 
+import hashlib
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Callable, Dict, List, Optional
-import threading
-import time
-import hashlib
-import json
 
 
 class ExecutionEvent(Enum):
@@ -50,13 +49,13 @@ class ExecutionContext:
     renter: str
     amount: int
     deadline: str
-    deliverable_hash: Optional[str] = None
-    expected_hash: Optional[str] = None
-    escrow_id: Optional[str] = None
+    deliverable_hash: str | None = None
+    expected_hash: str | None = None
+    escrow_id: str | None = None
     dispute_count: int = 0
-    events: List[ExecutionEvent] = field(default_factory=list)
-    metadata: Dict = field(default_factory=dict)
-    
+    events: list[ExecutionEvent] = field(default_factory=list)
+    metadata: dict = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return {
             "mandate_id": self.mandate_id,
@@ -83,9 +82,9 @@ class ExecutionResult:
     success: bool
     event: ExecutionEvent
     message: str
-    details: Dict = field(default_factory=dict)
+    details: dict = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
+
     def to_dict(self) -> dict:
         return {
             "success": self.success,
@@ -120,7 +119,7 @@ class ExecutionRule:
     enabled: bool = True
     priority: int = 100
     executions_count: int = 0
-    last_executed: Optional[str] = None
+    last_executed: str | None = None
 
 
 class AutoExecutor:
@@ -148,10 +147,10 @@ class AutoExecutor:
         >>> # Start monitoring
         >>> executor.start()
     """
-    
+
     DEADLINE_WARNING_HOURS = 4
     ACCEPTANCE_WINDOW_HOURS = 24
-    
+
     def __init__(self, check_interval: int = 60):
         """
         Initialize auto-executor.
@@ -162,16 +161,16 @@ class AutoExecutor:
         self.check_interval = check_interval
         self._running = False
         self._monitor_thread = None
-        self._rules: List[ExecutionRule] = []
-        self._execution_history: List[ExecutionResult] = []
-        self._callbacks: Dict[ExecutionEvent, List[Callable]] = {}
-        
+        self._rules: list[ExecutionRule] = []
+        self._execution_history: list[ExecutionResult] = []
+        self._callbacks: dict[ExecutionEvent, list[Callable]] = {}
+
         # Initialize default rules
         self._init_default_rules()
-    
+
     def _init_default_rules(self):
         """Initialize built-in execution rules"""
-        
+
         # Rule: Auto-complete when deliverable hash matches
         self.add_rule(ExecutionRule(
             rule_id="auto-complete-hash",
@@ -185,7 +184,7 @@ class AutoExecutor:
             action=self._auto_complete_action,
             priority=10,
         ))
-        
+
         # Rule: Auto-release funds after acceptance window
         self.add_rule(ExecutionRule(
             rule_id="auto-release-funds",
@@ -195,7 +194,7 @@ class AutoExecutor:
             action=self._auto_release_action,
             priority=20,
         ))
-        
+
         # Rule: Auto-escalate disputes at threshold
         self.add_rule(ExecutionRule(
             rule_id="auto-escalate-dispute",
@@ -205,7 +204,7 @@ class AutoExecutor:
             action=self._escalate_dispute_action,
             priority=5,
         ))
-        
+
         # Rule: Warn before deadline
         self.add_rule(ExecutionRule(
             rule_id="deadline-warning",
@@ -215,35 +214,35 @@ class AutoExecutor:
             action=self._deadline_warning_action,
             priority=50,
         ))
-    
+
     def start(self):
         """Start the auto-executor background monitoring"""
         if self._running:
             return
-        
+
         self._running = True
         self._monitor_thread = threading.Thread(target=self._monitor_loop)
         self._monitor_thread.daemon = True
         self._monitor_thread.start()
         print(f"AutoExecutor started (check interval: {self.check_interval}s)")
-    
+
     def stop(self):
         """Stop the auto-executor"""
         self._running = False
         if self._monitor_thread:
             self._monitor_thread.join(timeout=5)
         print("AutoExecutor stopped")
-    
+
     def add_rule(self, rule: ExecutionRule):
         """Add a custom execution rule"""
         self._rules.append(rule)
         self._rules.sort(key=lambda r: r.priority)
         print(f"Added rule: {rule.name} (priority: {rule.priority})")
-    
+
     def remove_rule(self, rule_id: str):
         """Remove a rule by ID"""
         self._rules = [r for r in self._rules if r.rule_id != rule_id]
-    
+
     def register_callback(
         self,
         event: ExecutionEvent,
@@ -253,12 +252,12 @@ class AutoExecutor:
         if event not in self._callbacks:
             self._callbacks[event] = []
         self._callbacks[event].append(callback)
-    
+
     def trigger_event(
         self,
         event: ExecutionEvent,
         context: ExecutionContext,
-    ) -> List[ExecutionResult]:
+    ) -> list[ExecutionResult]:
         """
         Trigger an event and execute matching rules.
         
@@ -271,26 +270,26 @@ class AutoExecutor:
         """
         results = []
         context.events.append(event)
-        
+
         for rule in self._rules:
             if not rule.enabled:
                 continue
             if rule.event != event:
                 continue
-            
+
             try:
                 if rule.condition(context):
                     result = rule.action(context)
                     result.event = event
                     results.append(result)
-                    
+
                     # Update rule stats
                     rule.executions_count += 1
                     rule.last_executed = datetime.utcnow().isoformat()
-                    
+
                     # Call callbacks
                     self._call_event_callbacks(event, context, result)
-                    
+
                     # Record in history
                     self._execution_history.append(result)
             except Exception as e:
@@ -302,9 +301,9 @@ class AutoExecutor:
                 )
                 results.append(error_result)
                 self._execution_history.append(error_result)
-        
+
         return results
-    
+
     def _call_event_callbacks(
         self,
         event: ExecutionEvent,
@@ -318,7 +317,7 @@ class AutoExecutor:
                     callback(context, result)
                 except Exception as e:
                     print(f"Callback error: {e}")
-    
+
     def _monitor_loop(self):
         """Background loop for deadline monitoring"""
         while self._running:
@@ -328,15 +327,15 @@ class AutoExecutor:
             except Exception as e:
                 print(f"Monitor loop error: {e}")
                 time.sleep(self.check_interval)
-    
+
     def _check_deadlines(self):
         """Check all active mandates for deadline issues"""
         # This would query the mandate storage
         # For now, just a placeholder
         pass
-    
+
     # ============ Built-in Actions ============
-    
+
     def _auto_complete_action(self, context: ExecutionContext) -> ExecutionResult:
         """Action: Auto-complete mandate when hash matches"""
         return ExecutionResult(
@@ -348,7 +347,7 @@ class AutoExecutor:
                 "action": "complete",
             },
         )
-    
+
     def _auto_release_action(self, context: ExecutionContext) -> ExecutionResult:
         """Action: Auto-release funds to provider"""
         return ExecutionResult(
@@ -361,7 +360,7 @@ class AutoExecutor:
                 "escrow_id": context.escrow_id,
             },
         )
-    
+
     def _escalate_dispute_action(self, context: ExecutionContext) -> ExecutionResult:
         """Action: Escalate dispute to community"""
         return ExecutionResult(
@@ -373,7 +372,7 @@ class AutoExecutor:
                 "action": "escalate",
             },
         )
-    
+
     def _deadline_warning_action(self, context: ExecutionContext) -> ExecutionResult:
         """Action: Send deadline warning"""
         return ExecutionResult(
@@ -385,9 +384,9 @@ class AutoExecutor:
                 "action": "warn",
             },
         )
-    
+
     # ============ Helper Methods ============
-    
+
     def verify_deliverable_hash(
         self,
         deliverable_content: str,
@@ -405,7 +404,7 @@ class AutoExecutor:
         """
         actual_hash = hashlib.sha256(deliverable_content.encode()).hexdigest()
         return actual_hash == expected_hash
-    
+
     def calculate_deliverable_hash(self, content: str) -> str:
         """
         Calculate SHA256 hash of deliverable content.
@@ -417,29 +416,29 @@ class AutoExecutor:
             SHA256 hash string
         """
         return hashlib.sha256(content.encode()).hexdigest()
-    
+
     def is_deadline_expired(self, deadline: str) -> bool:
         """Check if deadline has passed"""
         return datetime.utcnow() > datetime.fromisoformat(deadline)
-    
+
     def get_deadline_status(self, deadline: str) -> str:
         """Get human-readable deadline status"""
         deadline_dt = datetime.fromisoformat(deadline)
         now = datetime.utcnow()
-        
+
         if now > deadline_dt:
             return "expired"
-        
+
         remaining = deadline_dt - now
         hours = remaining.total_seconds() / 3600
-        
+
         if hours < 1:
             return f"{int(remaining.total_seconds() / 60)} minutes"
         elif hours < 24:
             return f"{int(hours)} hours"
         else:
             return f"{int(hours / 24)} days"
-    
+
     def create_context(
         self,
         mandate_id: str,
@@ -462,23 +461,23 @@ class AutoExecutor:
             expected_hash=expected_hash,
             dispute_count=dispute_count,
         )
-    
+
     def get_execution_history(
         self,
         mandate_id: str = None,
         event: ExecutionEvent = None,
-    ) -> List[ExecutionResult]:
+    ) -> list[ExecutionResult]:
         """Get execution history with optional filters"""
         history = self._execution_history
-        
+
         if mandate_id:
             history = [r for r in history if mandate_id in r.message]
-        
+
         if event:
             history = [r for r in history if r.event == event]
-        
+
         return history
-    
+
     def get_stats(self) -> dict:
         """Get executor statistics"""
         return {
@@ -511,13 +510,13 @@ def get_auto_executor(check_interval: int = 60) -> AutoExecutor:
 def demo():
     """Demo the auto-execution engine"""
     executor = AutoExecutor(check_interval=10)
-    
+
     # Register callback
     def on_complete(context, result):
         print(f"   [Callback] {result.message}")
-    
+
     executor.register_callback(ExecutionEvent.FUNDS_RELEASED, on_complete)
-    
+
     # Create context
     context = executor.create_context(
         mandate_id="mandate-demo-1",
@@ -527,24 +526,24 @@ def demo():
         deadline=(datetime.utcnow() + timedelta(hours=24)).isoformat(),
         expected_hash="abc123def456",
     )
-    
+
     # Simulate deliverable submission
     context.deliverable_hash = "abc123def456"
-    
+
     print("1. Triggering deliverable event...")
     results = executor.trigger_event(ExecutionEvent.DELIVERABLE_SUBMITTED, context)
     for result in results:
         print(f"   Result: {result.message}")
-    
+
     # Check stats
     print("\n2. Executor stats:")
     stats = executor.get_stats()
     for key, value in stats.items():
         print(f"   {key}: {value}")
-    
+
     # Show deadline status
     print(f"\n3. Deadline status: {executor.get_deadline_status(context.deadline)}")
-    
+
     # Stop
     executor.stop()
 

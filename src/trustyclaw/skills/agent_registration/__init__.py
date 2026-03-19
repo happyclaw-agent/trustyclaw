@@ -5,30 +5,30 @@ Provides functionality for autonomous agents to register their capabilities,
 manage auto-negotiation rules, and update their service offerings.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, List, Any
-import uuid
+from typing import Any, Dict, List, Optional
 
-from trustyclaw.models.skill import (
-    SkillCapability,
-    SkillSpec,
-    PricingConfig,
-    PricingModel,
-    AvailabilitySchedule,
-    QualityBadge,
-    QualityCertification,
-    AgentCapabilities,
-)
 from trustyclaw.models.negotiation import (
-    NegotiationRules,
-    NegotiationStrategy,
     AutoAcceptCriteria,
+    DeliveryPreference,
+    DeliveryPreferences,
+    NegotiationRules,
+    NegotiationSession,
+    NegotiationStrategy,
     PriceNegotiationRules,
     PriceRange,
-    DeliveryPreferences,
-    DeliveryPreference,
-    NegotiationSession,
+)
+from trustyclaw.models.skill import (
+    AgentCapabilities,
+    AvailabilitySchedule,
+    PricingConfig,
+    PricingModel,
+    QualityBadge,
+    QualityCertification,
+    SkillCapability,
+    SkillSpec,
 )
 
 
@@ -38,12 +38,12 @@ class AgentRegistration:
     registration_id: str
     agent_address: str
     capabilities: AgentCapabilities
-    negotiation_rules: Optional[NegotiationRules]
+    negotiation_rules: NegotiationRules | None
     status: str  # pending, active, suspended, revoked
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "registration_id": self.registration_id,
             "agent_address": self.agent_address,
@@ -66,18 +66,18 @@ class AgentRegistrationSkill:
     - Agent profile management
     - Negotiation session handling
     """
-    
+
     def __init__(self):
-        self._registrations: Dict[str, AgentRegistration] = {}
-        self._agent_by_address: Dict[str, str] = {}  # address -> registration_id
-        self._negotiations: Dict[str, NegotiationSession] = {}
+        self._registrations: dict[str, AgentRegistration] = {}
+        self._agent_by_address: dict[str, str] = {}  # address -> registration_id
+        self._negotiations: dict[str, NegotiationSession] = {}
         self._init_mock_data()
-    
+
     def _init_mock_data(self):
         """Initialize with sample registrations"""
         # Create sample registration
         registration_id = f"reg_{uuid.uuid4().hex[:16]}"
-        
+
         # Sample skills
         skills = [
             SkillSpec(
@@ -107,7 +107,7 @@ class AgentRegistrationSkill:
                 tags=["Data", "Analysis", "Pandas"],
             ),
         ]
-        
+
         capabilities = AgentCapabilities(
             agent_address="TestAgent001",
             name="Test Auto Agent",
@@ -118,7 +118,7 @@ class AgentRegistrationSkill:
             auto_accept_mandates=False,
             max_mandate_value=10000000,  # 10 USDC max
         )
-        
+
         negotiation_rules = NegotiationRules(
             strategy=NegotiationStrategy.PRICE_NEGOTIATE,
             auto_accept=AutoAcceptCriteria(
@@ -138,7 +138,7 @@ class AgentRegistrationSkill:
                 max_duration_seconds=86400,  # 24 hours
             ),
         )
-        
+
         registration = AgentRegistration(
             registration_id=registration_id,
             agent_address="TestAgent001",
@@ -146,18 +146,18 @@ class AgentRegistrationSkill:
             negotiation_rules=negotiation_rules,
             status="active",
         )
-        
+
         self._registrations[registration_id] = registration
         self._agent_by_address["TestAgent001"] = registration_id
-    
+
     # ============ Agent Registration ============
-    
+
     def register_agent(
         self,
         name: str,
         bio: str,
-        capabilities: List[SkillCapability],
-        pricing: Dict[str, int],  # skill_id -> price in USDC lamports
+        capabilities: list[SkillCapability],
+        pricing: dict[str, int],  # skill_id -> price in USDC lamports
         auto_accept: bool = False,
         max_mandate_value: int = None,
         agent_address: str = None,
@@ -180,18 +180,18 @@ class AgentRegistrationSkill:
         # Generate agent address if not provided
         if agent_address is None:
             agent_address = f"agent_{uuid.uuid4().hex[:24]}"
-        
+
         registration_id = f"reg_{uuid.uuid4().hex[:16]}"
-        
+
         # Create skill specs from capabilities and pricing
         skill_specs = []
         for i, capability in enumerate(capabilities):
             skill_id = f"skill_{uuid.uuid4().hex[:8]}"
             skill_name = capability.value.replace("-", " ").title()
-            
+
             skill_pricing = pricing.get(capability.value) or pricing.get(skill_id)
             base_price = skill_pricing if skill_pricing else 1000000  # Default 1 USDC
-            
+
             skill_spec = SkillSpec(
                 skill_id=skill_id,
                 capability=capability,
@@ -204,7 +204,7 @@ class AgentRegistrationSkill:
                 estimated_duration_hours=2.0,
             )
             skill_specs.append(skill_spec)
-        
+
         # Create capabilities profile
         capabilities_profile = AgentCapabilities(
             agent_address=agent_address,
@@ -216,7 +216,7 @@ class AgentRegistrationSkill:
             auto_accept_mandates=auto_accept,
             max_mandate_value=max_mandate_value,
         )
-        
+
         # Create default negotiation rules if auto_accept
         negotiation_rules = None
         if auto_accept:
@@ -229,7 +229,7 @@ class AgentRegistrationSkill:
                     require_escrow=True,
                 ),
             )
-        
+
         # Create registration
         registration = AgentRegistration(
             registration_id=registration_id,
@@ -238,51 +238,51 @@ class AgentRegistrationSkill:
             negotiation_rules=negotiation_rules,
             status="active",
         )
-        
+
         # Store registration
         self._registrations[registration_id] = registration
         self._agent_by_address[agent_address] = registration_id
-        
+
         return registration
-    
-    def get_registration(self, agent_address: str) -> Optional[AgentRegistration]:
+
+    def get_registration(self, agent_address: str) -> AgentRegistration | None:
         """Get agent registration by address"""
         registration_id = self._agent_by_address.get(agent_address)
         if registration_id:
             return self._registrations.get(registration_id)
         return None
-    
-    def get_registration_by_id(self, registration_id: str) -> Optional[AgentRegistration]:
+
+    def get_registration_by_id(self, registration_id: str) -> AgentRegistration | None:
         """Get agent registration by ID"""
         return self._registrations.get(registration_id)
-    
+
     def list_registrations(
         self,
         auto_negotiating_only: bool = False,
         status: str = None,
         limit: int = 100,
-    ) -> List[AgentRegistration]:
+    ) -> list[AgentRegistration]:
         """List agent registrations"""
         registrations = list(self._registrations.values())
-        
+
         if auto_negotiating_only:
             registrations = [
                 r for r in registrations
                 if r.capabilities.auto_negotiation
             ]
-        
+
         if status:
             registrations = [r for r in registrations if r.status == status]
-        
+
         return registrations[:limit]
-    
+
     # ============ Capability Management ============
-    
+
     def update_capabilities(
         self,
         agent_address: str,
-        capabilities: List[SkillCapability],
-        pricing: Dict[str, int] = None,
+        capabilities: list[SkillCapability],
+        pricing: dict[str, int] = None,
     ) -> AgentRegistration:
         """
         Update agent capabilities.
@@ -298,16 +298,16 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         # Update skills
         skill_specs = []
         for i, capability in enumerate(capabilities):
             skill_id = f"skill_{uuid.uuid4().hex[:8]}"
             skill_name = capability.value.replace("-", " ").title()
-            
+
             skill_pricing = pricing.get(capability.value) if pricing else None
             base_price = skill_pricing if skill_pricing else 1000000
-            
+
             skill_spec = SkillSpec(
                 skill_id=skill_id,
                 capability=capability,
@@ -320,12 +320,12 @@ class AgentRegistrationSkill:
                 estimated_duration_hours=2.0,
             )
             skill_specs.append(skill_spec)
-        
+
         registration.capabilities.skills = skill_specs
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return registration
-    
+
     def add_skill(
         self,
         agent_address: str,
@@ -339,9 +339,9 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         skill_id = f"skill_{uuid.uuid4().hex[:8]}"
-        
+
         skill_spec = SkillSpec(
             skill_id=skill_id,
             capability=capability,
@@ -353,29 +353,29 @@ class AgentRegistrationSkill:
             ),
             estimated_duration_hours=estimated_hours,
         )
-        
+
         registration.capabilities.skills.append(skill_spec)
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return skill_spec
-    
+
     def remove_skill(self, agent_address: str, skill_id: str) -> bool:
         """Remove a skill from an agent"""
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         skills = registration.capabilities.skills
         for i, skill in enumerate(skills):
             if skill.skill_id == skill_id:
                 skills.pop(i)
                 registration.updated_at = datetime.utcnow().isoformat()
                 return True
-        
+
         return False
-    
+
     # ============ Negotiation Rules ============
-    
+
     def set_auto_negotiation(
         self,
         agent_address: str,
@@ -394,15 +394,15 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         registration.negotiation_rules = rules
         registration.capabilities.auto_negotiation = (
             rules.strategy != NegotiationStrategy.MANUAL_REVIEW
         )
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return registration
-    
+
     def enable_auto_accept(
         self,
         agent_address: str,
@@ -415,7 +415,7 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         rules = NegotiationRules(
             strategy=NegotiationStrategy.AUTO_ACCEPT,
             auto_accept=AutoAcceptCriteria(
@@ -425,21 +425,21 @@ class AgentRegistrationSkill:
                 require_deposit=require_deposit,
             ),
         )
-        
+
         return self.set_auto_negotiation(agent_address, rules)
-    
+
     def disable_auto_negotiation(self, agent_address: str) -> AgentRegistration:
         """Disable auto-negotiation, require manual review"""
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         rules = NegotiationRules(
             strategy=NegotiationStrategy.MANUAL_REVIEW,
         )
-        
+
         return self.set_auto_negotiation(agent_address, rules)
-    
+
     def configure_price_negotiation(
         self,
         agent_address: str,
@@ -451,47 +451,47 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         price_rules = PriceNegotiationRules(
             strategy=strategy,
             min_counter_offers=min_counter_offers,
             max_counter_offers=max_counter_offers,
         )
-        
+
         if registration.negotiation_rules is None:
             registration.negotiation_rules = NegotiationRules(
                 strategy=NegotiationStrategy.PRICE_NEGOTIATE,
             )
-        
+
         registration.negotiation_rules.price_rules = price_rules
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return registration
-    
+
     # ============ Agent Status ============
-    
+
     def suspend_agent(self, agent_address: str) -> AgentRegistration:
         """Suspend an agent"""
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         registration.status = "suspended"
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return registration
-    
+
     def activate_agent(self, agent_address: str) -> AgentRegistration:
         """Activate a suspended agent"""
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         registration.status = "active"
         registration.updated_at = datetime.utcnow().isoformat()
-        
+
         return registration
-    
+
     def delete_registration(self, agent_address: str) -> bool:
         """Delete an agent registration"""
         registration_id = self._agent_by_address.get(agent_address)
@@ -500,9 +500,9 @@ class AgentRegistrationSkill:
             self._agent_by_address.pop(agent_address)
             return True
         return False
-    
+
     # ============ Negotiation Sessions ============
-    
+
     def start_negotiation(
         self,
         agent_address: str,
@@ -515,9 +515,9 @@ class AgentRegistrationSkill:
         registration = self.get_registration(agent_address)
         if not registration:
             raise ValueError(f"Agent not found: {agent_address}")
-        
+
         session_id = f"neg_{uuid.uuid4().hex[:16]}"
-        
+
         session = NegotiationSession(
             session_id=session_id,
             agent_address=agent_address,
@@ -527,15 +527,15 @@ class AgentRegistrationSkill:
             agent_offer=initial_price,
             agent_duration=duration_seconds,
         )
-        
+
         self._negotiations[session_id] = session
-        
+
         return session
-    
-    def get_negotiation(self, session_id: str) -> Optional[NegotiationSession]:
+
+    def get_negotiation(self, session_id: str) -> NegotiationSession | None:
         """Get a negotiation session"""
         return self._negotiations.get(session_id)
-    
+
     def accept_offer(
         self,
         session_id: str,
@@ -547,53 +547,53 @@ class AgentRegistrationSkill:
         session = self._negotiations.get(session_id)
         if not session:
             raise ValueError(f"Negotiation not found: {session_id}")
-        
+
         session.add_counter(offerer, price, duration)
         session.status = "accepted"
         session.updated_at = datetime.utcnow().isoformat()
-        
+
         return session
-    
+
     def reject_negotiation(self, session_id: str) -> NegotiationSession:
         """Reject a negotiation"""
         session = self._negotiations.get(session_id)
         if not session:
             raise ValueError(f"Negotiation not found: {session_id}")
-        
+
         session.status = "rejected"
         session.updated_at = datetime.utcnow().isoformat()
-        
+
         return session
-    
+
     def get_agent_negotiations(
         self,
         agent_address: str,
         status: str = None,
-    ) -> List[NegotiationSession]:
+    ) -> list[NegotiationSession]:
         """Get all negotiations for an agent"""
         negotiations = [
             n for n in self._negotiations.values()
             if n.agent_address == agent_address
         ]
-        
+
         if status:
             negotiations = [n for n in negotiations if n.status == status]
-        
+
         return negotiations
-    
+
     # ============ Statistics ============
-    
-    def get_statistics(self) -> Dict[str, Any]:
+
+    def get_statistics(self) -> dict[str, Any]:
         """Get registration statistics"""
         registrations = list(self._registrations.values())
-        
+
         auto_negotiating = sum(
             1 for r in registrations
             if r.capabilities.auto_negotiation
         )
-        
+
         active = sum(1 for r in registrations if r.status == "active")
-        
+
         return {
             "total_registrations": len(registrations),
             "active_agents": active,
@@ -604,19 +604,19 @@ class AgentRegistrationSkill:
                 if n.status == "active"
             ),
         }
-    
+
     # ============ Export ============
-    
+
     def export_registration_json(self, agent_address: str = None) -> str:
         """Export registration(s) as JSON"""
         import json
-        
+
         if agent_address:
             registration = self.get_registration(agent_address)
             data = [registration.to_dict()] if registration else []
         else:
             data = [r.to_dict() for r in self._registrations.values()]
-        
+
         return json.dumps(data, indent=2)
 
 

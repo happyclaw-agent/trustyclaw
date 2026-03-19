@@ -3,9 +3,14 @@ Unit Tests for Reputation Program
 Tests verify reputation state machine and basic operations.
 """
 import pytest
+
 from trustyclaw.sdk.reputation import (
-    ReputationEngine, ReputationScore, Review, Rating,
+    Rating,
+    ReputationEngine,
+    ReputationScore,
+    Review,
 )
+
 
 class TestReview:
     def test_create_review(self):

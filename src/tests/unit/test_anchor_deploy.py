@@ -15,22 +15,22 @@ import pytest
 
 class TestAnchorDeployment:
     """Test Anchor program deployment to devnet"""
-    
+
     def test_anchor_toml_exists(self):
         """Verify Anchor.toml exists with devnet configuration"""
         assert os.path.exists('Anchor.toml'), "Anchor.toml not found"
-        
-        with open('Anchor.toml', 'r') as f:
+
+        with open('Anchor.toml') as f:
             content = f.read()
-        
+
         assert '[programs.devnet]' in content, "Devnet programs not configured"
         assert 'escrow = ' in content, "Escrow program ID not set"
-    
+
     def test_escrow_program_id_valid(self):
         """Verify escrow program ID is a valid Solana address"""
-        with open('Anchor.toml', 'r') as f:
+        with open('Anchor.toml') as f:
             content = f.read()
-        
+
         # Extract program ID for devnet
         in_devnet = False
         for line in content.split('\n'):
@@ -46,13 +46,13 @@ class TestAnchorDeployment:
                 return
         else:
             pytest.fail("Escrow program ID not found in [programs.devnet]")
-    
+
     def test_anchor_build(self):
         """Verify Anchor program builds successfully (skip if anchor not installed)"""
         import shutil
         if shutil.which('anchor') is None:
             pytest.skip("Anchor CLI not installed")
-        
+
         result = subprocess.run(
             ['anchor', 'build'],
             cwd='programs/escrow',
@@ -61,20 +61,20 @@ class TestAnchorDeployment:
             timeout=120
         )
         assert result.returncode == 0, f"Anchor build failed: {result.stderr}"
-    
+
     def test_anchor_idl_generated(self):
         """Verify IDL is generated after build"""
         import shutil
         if shutil.which('anchor') is None:
             pytest.skip("Anchor CLI not installed")
-        
+
         idl_path = 'target/idl/escrow.json'
         assert os.path.exists(idl_path), f"IDL not generated at {idl_path}"
 
 
 class TestDemoMockMode:
     """Test demo.py in mock mode"""
-    
+
     def test_demo_help(self):
         """Verify demo.py --help works"""
         result = subprocess.run(
@@ -86,7 +86,7 @@ class TestDemoMockMode:
         assert result.returncode == 0, f"--help failed: {result.stderr}"
         assert '--mock' in result.stdout, "--mock flag not in help"
         assert '--onchain' in result.stdout, "--onchain flag not in help"
-    
+
     def test_demo_mock_runs(self):
         """Verify demo.py --mock runs without errors"""
         result = subprocess.run(
@@ -97,7 +97,7 @@ class TestDemoMockMode:
         )
         assert result.returncode == 0, f"Demo --mock failed: {result.stderr}"
         assert 'DEMO COMPLETE!' in result.stdout, "Demo did not complete"
-    
+
     def test_demo_default_is_mock(self):
         """Verify demo.py defaults to mock mode"""
         result = subprocess.run(
@@ -113,7 +113,7 @@ class TestDemoMockMode:
 
 class TestDemoOnchainMode:
     """Test demo.py in on-chain mode (requires deployed programs)"""
-    
+
     def test_demo_onchain_flag(self):
         """Verify demo.py --onchain flag is recognized"""
         result = subprocess.run(
@@ -128,16 +128,16 @@ class TestDemoOnchainMode:
 
 class TestEscrowClient:
     """Test EscrowClient functionality"""
-    
+
     def test_escrow_client_import(self):
         """Verify EscrowClient can be imported"""
         from trustyclaw.sdk.escrow_contract import EscrowClient
         assert EscrowClient is not None
-    
+
     def test_escrow_terms_creation(self):
         """Verify EscrowTerms can be created"""
         from trustyclaw.sdk.escrow_contract import EscrowTerms
-        
+
         terms = EscrowTerms(
             skill_name="test-skill",
             duration_seconds=3600,
@@ -146,13 +146,13 @@ class TestEscrowClient:
         )
         assert terms.skill_name == "test-skill"
         assert terms.price_usdc == 1000000
-    
+
     def test_escrow_client_methods_exist(self):
         """Verify EscrowClient has required methods"""
         from trustyclaw.sdk.escrow_contract import EscrowClient
-        
+
         client = EscrowClient()
-        
+
         assert hasattr(client, 'create_escrow'), "create_escrow method missing"
         assert hasattr(client, 'fund_escrow'), "fund_escrow method missing"
         assert hasattr(client, 'release_escrow'), "release_escrow method missing"
@@ -160,26 +160,26 @@ class TestEscrowClient:
 
 class TestReputationChain:
     """Test ReputationChain functionality"""
-    
+
     def test_reputation_chain_import(self):
         """Verify ReputationChainSDK can be imported"""
         from trustyclaw.sdk.reputation_chain import ReputationChainSDK
         assert ReputationChainSDK is not None
-    
+
     def test_reputation_mock_data(self):
         """Verify reputation returns mock data in mock mode"""
         from trustyclaw.sdk.reputation_chain import ReputationChainSDK
-        
+
         sdk = ReputationChainSDK()
         result = sdk.get_reputation("test-address")
-        
+
         assert result is not None, "get_reputation returned None"
         assert hasattr(result, 'reputation_score'), "Missing reputation_score"
 
 
 class TestFullDemo:
     """Full integration tests for demo.py"""
-    
+
     def test_full_demo_sections(self):
         """Verify all demo sections execute"""
         result = subprocess.run(
@@ -188,9 +188,9 @@ class TestFullDemo:
             text=True,
             timeout=180
         )
-        
+
         assert result.returncode == 0, f"Full demo failed: {result.stderr}"
-        
+
         # Verify all sections ran
         assert 'SOLANA INTEGRATION' in result.stdout
         assert 'USDC TOKEN' in result.stdout
@@ -200,7 +200,7 @@ class TestFullDemo:
         assert 'DISCOVERY SKILL' in result.stdout
         assert 'REPUTATION SKILL' in result.stdout
         assert 'ON-CHAIN REPUTATION' in result.stdout
-    
+
     def test_demo_features_count(self):
         """Verify all 8 features are demonstrated"""
         result = subprocess.run(
@@ -209,7 +209,7 @@ class TestFullDemo:
             text=True,
             timeout=180
         )
-        
+
         features = [
             'SOLANA INTEGRATION',
             'USDC TOKEN INTEGRATION',
@@ -220,7 +220,7 @@ class TestFullDemo:
             'REPUTATION SKILL',
             'ON-CHAIN REPUTATION',
         ]
-        
+
         for feature in features:
             assert feature in result.stdout, f"Missing feature: {feature}"
 

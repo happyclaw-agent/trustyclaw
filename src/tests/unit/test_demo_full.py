@@ -3,7 +3,6 @@
 Full demo tests - verify all sections can be imported and called without crashing.
 '''
 
-import pytest
 import sys
 
 # Mimic demo.py path setup - add both src and root for demo imports
@@ -11,16 +10,17 @@ sys.path.insert(0, 'src')
 sys.path.insert(0, '.')
 
 from demo import (
-    demo_solana,
-    demo_usdc,
-    demo_escrow,
-    demo_reviews,
-    demo_mandate,
     demo_discovery,
+    demo_escrow,
+    demo_mandate,
     demo_reputation,
     demo_reputation_chain,
-    main
+    demo_reviews,
+    demo_solana,
+    demo_usdc,
+    main,
 )
+
 
 def test_demo_solana():
     '''Test solana section exists and runs.'''

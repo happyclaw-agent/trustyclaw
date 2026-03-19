@@ -12,27 +12,26 @@ Features:
 - Auto-reload functionality
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Optional, Dict, List, Any, Callable
-from datetime import timedelta
-import uuid
-import hashlib
 import json
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
 try:
+    from solana.publickey import PublicKey
     from solana.rpc.api import Client as SolanaClient
     from solana.rpc.commitment import Confirmed, Finalized
     from solders.keypair import Keypair
-    from solana.publickey import PublicKey
     from spl.token.client import Token as SPLToken
-    from spl.token.instructions import transfer, TransferParams
+    from spl.token.instructions import TransferParams, transfer
     HAS_SOLANA = True
 except ImportError:
     HAS_SOLANA = False
 
-from .usdc import USDCClient, TransferResult, TransferStatus
+from .usdc import USDCClient
 
 
 class PaymentError(Exception):
@@ -86,17 +85,17 @@ class PaymentIntent:
     description: str
     status: PaymentStatus = PaymentStatus.PENDING
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    executed_at: Optional[str] = None
-    confirmed_at: Optional[str] = None
-    signature: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    executed_at: str | None = None
+    confirmed_at: str | None = None
+    signature: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     @property
     def amount_usd(self) -> float:
         """Amount in USD (USDC = $1)"""
         return self.amount / 1_000_000
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "intent_id": self.intent_id,
@@ -139,23 +138,23 @@ class EscrowPayment:
     from_wallet: str
     to_wallet: str
     status: EscrowPaymentStatus = EscrowPaymentStatus.PENDING
-    funded_at: Optional[str] = None
-    released_at: Optional[str] = None
-    refunded_at: Optional[str] = None
-    signatures: Dict[str, str] = field(default_factory=dict)  # wallet -> signature
+    funded_at: str | None = None
+    released_at: str | None = None
+    refunded_at: str | None = None
+    signatures: dict[str, str] = field(default_factory=dict)  # wallet -> signature
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
+
     @property
     def amount_usd(self) -> float:
         """Amount in USD"""
         return self.amount / 1_000_000
-    
+
     @property
     def is_fully_signed(self) -> bool:
         """Check if multi-sig is complete (2-of-3)"""
         return len(self.signatures) >= 2
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "escrow_id": self.escrow_id,
@@ -181,13 +180,13 @@ class PaymentResult:
     Contains transaction details and final status.
     """
     success: bool
-    payment_intent_id: Optional[str] = None
-    signature: Optional[str] = None
-    status: Optional[PaymentStatus] = None
-    error: Optional[str] = None
-    explorer_url: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    payment_intent_id: str | None = None
+    signature: str | None = None
+    status: PaymentStatus | None = None
+    error: str | None = None
+    explorer_url: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "success": self.success,
@@ -208,14 +207,14 @@ class BalanceNotification:
     """
     wallet_address: str
     threshold_usd: float  # Alert when below this amount
-    callback_url: Optional[str] = None
+    callback_url: str | None = None
     auto_reload_enabled: bool = False
     auto_reload_amount: int = 0  # microUSDC
     auto_reload_max_daily: int = 0  # Max daily reloads
-    last_notified_at: Optional[str] = None
-    last_reloaded_at: Optional[str] = None
+    last_notified_at: str | None = None
+    last_reloaded_at: str | None = None
     reload_count_today: int = 0
-    
+
     @property
     def threshold_micro(self) -> int:
         """Threshold in microUSDC"""
@@ -237,14 +236,14 @@ class Payment:
     status: PaymentStatus
     signature: str
     created_at: str
-    confirmed_at: Optional[str] = None
-    
+    confirmed_at: str | None = None
+
     @property
     def amount_usd(self) -> float:
         """Amount in USD"""
         return self.amount / 1_000_000
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "payment_id": self.payment_id,
@@ -264,10 +263,10 @@ class Payment:
 class MultisigConfig:
     """Multi-signature configuration for large transactions"""
     threshold_usd: float  # Apply multisig above this amount
-    required_signers: List[str]  # 3 required signers
+    required_signers: list[str]  # 3 required signers
     required_count: int = 2  # 2-of-3 by default
-    recovery_signer: Optional[str] = None  # For recovery
-    
+    recovery_signer: str | None = None  # For recovery
+
     @property
     def threshold_micro(self) -> int:
         """Threshold in microUSDC"""
@@ -295,17 +294,17 @@ class USDCPaymentService:
         ... )
         >>> result = service.execute_payment_intent(intent.intent_id)
     """
-    
+
     # Constants
     DEFAULT_THRESHOLD_USD = 10.0  # Alert when balance below $10
     DEFAULT_AUTO_RELOAD_AMOUNT = 100_000_000  # $100
     MULTISIG_THRESHOLD_USD = 1000.0  # Require multisig above $1000
-    
+
     def __init__(
         self,
         network: str = "devnet",
-        usdc_client: Optional[USDCClient] = None,
-        multisig_config: Optional[MultisigConfig] = None,
+        usdc_client: USDCClient | None = None,
+        multisig_config: MultisigConfig | None = None,
     ):
         """
         Initialize USDC Payment Service.
@@ -322,31 +321,31 @@ class USDCPaymentService:
             required_signers=[],
             required_count=2,
         )
-        
+
         # In-memory storage for demo
-        self._payment_intents: Dict[str, PaymentIntent] = {}
-        self._escrow_payments: Dict[str, EscrowPayment] = {}
-        self._payment_history: List[Payment] = []
-        self._balance_notifications: Dict[str, BalanceNotification] = {}
-        self._notification_callbacks: List[Callable] = []
-        
+        self._payment_intents: dict[str, PaymentIntent] = {}
+        self._escrow_payments: dict[str, EscrowPayment] = {}
+        self._payment_history: list[Payment] = []
+        self._balance_notifications: dict[str, BalanceNotification] = {}
+        self._notification_callbacks: list[Callable] = []
+
         # Load notification callbacks
         self._load_notification_callbacks()
-    
+
     def _load_notification_callbacks(self):
         """Load notification callback functions"""
         # These can be extended with actual webhook handlers
         pass
-    
+
     # ============ Payment Intents ============
-    
+
     def create_payment_intent(
         self,
         amount: int,  # microUSDC
         from_wallet: str,
         to_wallet: str,
         description: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PaymentIntent:
         """
         Create a new payment intent.
@@ -370,20 +369,20 @@ class USDCPaymentService:
         # Validate amount
         if amount <= 0:
             raise PaymentError("Amount must be positive")
-        
+
         if amount < 1_000:  # Minimum 0.001 USDC
             raise PaymentError("Amount below minimum (1,000 microUSDC)")
-        
+
         # Check for large transaction requiring multisig
         amount_usd = amount / 1_000_000
         requires_multisig = (
             self.multisig_config.threshold_usd > 0 and
             amount_usd >= self.multisig_config.threshold_usd
         )
-        
+
         # Generate unique intent ID
         intent_id = f"pi-{uuid.uuid4().hex[:16]}"
-        
+
         # Create intent
         intent = PaymentIntent(
             intent_id=intent_id,
@@ -394,25 +393,25 @@ class USDCPaymentService:
             status=PaymentStatus.PENDING,
             metadata=metadata or {},
         )
-        
+
         if requires_multisig:
             intent.metadata["requires_multisig"] = True
             intent.metadata["signers_required"] = self.multisig_config.required_signers
             intent.metadata["signatures_collected"] = {}
-        
+
         # Store intent
         self._payment_intents[intent_id] = intent
-        
+
         return intent
-    
-    def get_payment_intent(self, intent_id: str) -> Optional[PaymentIntent]:
+
+    def get_payment_intent(self, intent_id: str) -> PaymentIntent | None:
         """Get a payment intent by ID"""
         return self._payment_intents.get(intent_id)
-    
+
     def execute_payment_intent(
         self,
         intent_id: str,
-        from_wallet_keypair: Optional[str] = None,
+        from_wallet_keypair: str | None = None,
     ) -> PaymentResult:
         """
         Execute a payment intent.
@@ -435,14 +434,14 @@ class USDCPaymentService:
                 success=False,
                 error=f"Payment intent {intent_id} not found",
             )
-        
+
         if intent.status not in [PaymentStatus.PENDING, PaymentStatus.CONFIRMED]:
             return PaymentResult(
                 success=False,
                 payment_intent_id=intent_id,
                 error=f"Cannot execute intent in {intent.status.value} state",
             )
-        
+
         # Check multisig requirements
         if intent.metadata.get("requires_multisig"):
             if not intent.metadata.get("signatures_collected"):
@@ -451,7 +450,7 @@ class USDCPaymentService:
                     payment_intent_id=intent_id,
                     error="Multisig required but no signatures collected",
                 )
-        
+
         # Execute payment via USDC client
         try:
             result = self.usdc_client.transfer(
@@ -459,16 +458,16 @@ class USDCPaymentService:
                 to_wallet=intent.to_wallet,
                 amount=intent.amount_usd,
             )
-            
+
             # Update intent
             intent.status = PaymentStatus.PROCESSING
             intent.executed_at = datetime.utcnow().isoformat()
             intent.signature = result.signature
-            
+
             # Finalize
             intent.status = PaymentStatus.CONFIRMED
             intent.confirmed_at = datetime.utcnow().isoformat()
-            
+
             # Add to history
             payment = Payment(
                 payment_id=f"pay-{uuid.uuid4().hex[:12]}",
@@ -482,7 +481,7 @@ class USDCPaymentService:
                 confirmed_at=intent.confirmed_at,
             )
             self._payment_history.append(payment)
-            
+
             return PaymentResult(
                 success=True,
                 payment_intent_id=intent_id,
@@ -490,7 +489,7 @@ class USDCPaymentService:
                 status=intent.status,
                 explorer_url=result.explorer_url,
             )
-            
+
         except Exception as e:
             intent.status = PaymentStatus.FAILED
             return PaymentResult(
@@ -499,7 +498,7 @@ class USDCPaymentService:
                 status=PaymentStatus.FAILED,
                 error=str(e),
             )
-    
+
     def cancel_payment_intent(self, intent_id: str) -> PaymentResult:
         """
         Cancel a pending payment intent.
@@ -516,24 +515,24 @@ class USDCPaymentService:
                 success=False,
                 error=f"Payment intent {intent_id} not found",
             )
-        
+
         if intent.status != PaymentStatus.PENDING:
             return PaymentResult(
                 success=False,
                 payment_intent_id=intent_id,
                 error=f"Cannot cancel intent in {intent.status.value} state",
             )
-        
+
         intent.status = PaymentStatus.CANCELLED
-        
+
         return PaymentResult(
             success=True,
             payment_intent_id=intent_id,
             status=PaymentStatus.CANCELLED,
         )
-    
+
     # ============ Escrow Payments ============
-    
+
     def execute_escrow_payment(
         self,
         escrow_id: str,
@@ -568,7 +567,7 @@ class USDCPaymentService:
                 "type": "escrow",
             }
         )
-        
+
         # Create escrow payment record
         escrow_payment = EscrowPayment(
             escrow_id=escrow_id,
@@ -578,11 +577,11 @@ class USDCPaymentService:
             to_wallet=to_wallet,
             status=EscrowPaymentStatus.PENDING,
         )
-        
+
         self._escrow_payments[escrow_id] = escrow_payment
-        
+
         return escrow_payment
-    
+
     def fund_escrow_payment(self, escrow_id: str) -> PaymentResult:
         """
         Fund an escrow payment.
@@ -601,27 +600,27 @@ class USDCPaymentService:
                 success=False,
                 error=f"Escrow payment {escrow_id} not found",
             )
-        
+
         if escrow.status != EscrowPaymentStatus.PENDING:
             return PaymentResult(
                 success=False,
                 error=f"Escrow is {escrow.status.value}, cannot fund",
             )
-        
+
         # Execute payment
         result = self.execute_payment_intent(escrow.payment_intent_id)
-        
+
         if result.success:
             escrow.status = EscrowPaymentStatus.FUNDED
             escrow.funded_at = datetime.utcnow().isoformat()
-        
+
         return result
-    
+
     def release_escrow_payment(
         self,
         escrow_id: str,
         authority: str,
-        signature: Optional[str] = None,
+        signature: str | None = None,
     ) -> PaymentResult:
         """
         Release escrow funds to provider.
@@ -640,17 +639,17 @@ class USDCPaymentService:
                 success=False,
                 error=f"Escrow payment {escrow_id} not found",
             )
-        
+
         if escrow.status != EscrowPaymentStatus.FUNDED:
             return PaymentResult(
                 success=False,
                 error=f"Escrow is {escrow.status.value}, cannot release",
             )
-        
+
         # Collect signature for multisig
         if signature:
             escrow.signatures[authority] = signature
-        
+
         # Check if we need multisig
         intent = self.get_payment_intent(escrow.payment_intent_id)
         if intent and intent.metadata.get("requires_multisig"):
@@ -660,17 +659,17 @@ class USDCPaymentService:
                     payment_intent_id=intent.intent_id,
                     error=f"Need {2 - len(escrow.signatures)} more signature(s)",
                 )
-        
+
         # Release funds (simulate - actual release happens via escrow contract)
         escrow.status = EscrowPaymentStatus.RELEASED
         escrow.released_at = datetime.utcnow().isoformat()
-        
+
         return PaymentResult(
             success=True,
             payment_intent_id=escrow.payment_intent_id,
             status=PaymentStatus.FINALIZED,
         )
-    
+
     def refund_escrow_payment(self, escrow_id: str) -> PaymentResult:
         """
         Refund escrow funds to renter.
@@ -687,40 +686,40 @@ class USDCPaymentService:
                 success=False,
                 error=f"Escrow payment {escrow_id} not found",
             )
-        
+
         if escrow.status != EscrowPaymentStatus.FUNDED:
             return PaymentResult(
                 success=False,
                 error=f"Escrow is {escrow.status.value}, cannot refund",
             )
-        
+
         # Refund (simulate - actual refund happens via escrow contract)
         escrow.status = EscrowPaymentStatus.REFUNDED
         escrow.refunded_at = datetime.utcnow().isoformat()
-        
+
         # Update payment intent
         intent = self.get_payment_intent(escrow.payment_intent_id)
         if intent:
             intent.status = PaymentStatus.CANCELLED
-        
+
         return PaymentResult(
             success=True,
             payment_intent_id=escrow.payment_intent_id,
             status=PaymentStatus.CANCELLED,
         )
-    
-    def get_escrow_payment(self, escrow_id: str) -> Optional[EscrowPayment]:
+
+    def get_escrow_payment(self, escrow_id: str) -> EscrowPayment | None:
         """Get escrow payment by ID"""
         return self._escrow_payments.get(escrow_id)
-    
+
     # ============ Payment History ============
-    
+
     def get_payment_history(
         self,
         wallet_address: str,
         limit: int = 100,
-        status_filter: Optional[PaymentStatus] = None,
-    ) -> List[Payment]:
+        status_filter: PaymentStatus | None = None,
+    ) -> list[Payment]:
         """
         Get payment history for a wallet.
         
@@ -736,16 +735,16 @@ class USDCPaymentService:
             p for p in self._payment_history
             if p.from_wallet == wallet_address or p.to_wallet == wallet_address
         ]
-        
+
         if status_filter:
             payments = [p for p in payments if p.status == status_filter]
-        
+
         # Sort by created_at descending
         payments.sort(key=lambda p: p.created_at, reverse=True)
-        
+
         return payments[:limit]
-    
-    def get_all_payments(self, limit: int = 100) -> List[Payment]:
+
+    def get_all_payments(self, limit: int = 100) -> list[Payment]:
         """Get all payments (admin function)"""
         payments = sorted(
             self._payment_history,
@@ -753,16 +752,16 @@ class USDCPaymentService:
             reverse=True,
         )
         return payments[:limit]
-    
+
     # ============ Balance Notifications ============
-    
+
     def register_balance_notification(
         self,
         wallet_address: str,
         threshold_usd: float,
-        callback_url: Optional[str] = None,
+        callback_url: str | None = None,
         auto_reload: bool = False,
-        auto_reload_amount: Optional[int] = None,
+        auto_reload_amount: int | None = None,
     ) -> BalanceNotification:
         """
         Register a balance notification.
@@ -784,16 +783,16 @@ class USDCPaymentService:
             auto_reload_enabled=auto_reload,
             auto_reload_amount=auto_reload_amount or self.DEFAULT_AUTO_RELOAD_AMOUNT,
         )
-        
+
         self._balance_notifications[wallet_address] = notification
-        
+
         return notification
-    
+
     def check_balance_and_notify(
         self,
         wallet_address: str,
         force: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check balance and trigger notifications if needed.
         
@@ -807,11 +806,11 @@ class USDCPaymentService:
         notification = self._balance_notifications.get(wallet_address)
         if not notification:
             return {"alert_sent": False, "reason": "No notification registered"}
-        
+
         # Get current balance
         balance = self.usdc_client.get_balance(wallet_address)
         balance_usd = balance  # USDC = $1
-        
+
         # Check if below threshold
         if balance_usd >= notification.threshold_usd:
             return {
@@ -820,7 +819,7 @@ class USDCPaymentService:
                 "current_balance": balance_usd,
                 "threshold": notification.threshold_usd,
             }
-        
+
         # Check rate limiting
         if notification.last_notified_at and not force:
             last_notified = datetime.fromisoformat(notification.last_notified_at)
@@ -830,7 +829,7 @@ class USDCPaymentService:
                     "reason": "Rate limited",
                     "last_notified": notification.last_notified_at,
                 }
-        
+
         # Send alert
         alert = {
             "type": "low_balance_alert",
@@ -839,31 +838,31 @@ class USDCPaymentService:
             "threshold": notification.threshold_usd,
             "timestamp": datetime.utcnow().isoformat(),
         }
-        
+
         # Trigger callbacks
         for callback in self._notification_callbacks:
             try:
                 callback(alert)
             except Exception:
                 pass
-        
+
         # Send webhook if configured
         if notification.callback_url:
             self._send_webhook(notification.callback_url, alert)
-        
+
         # Update last notified
         notification.last_notified_at = datetime.utcnow().isoformat()
-        
+
         # Auto-reload if enabled
         if notification.auto_reload_enabled:
             self._execute_auto_reload(notification, balance)
-        
+
         return {
             "alert_sent": True,
             "alert": alert,
             "auto_reloaded": notification.auto_reload_enabled,
         }
-    
+
     def _execute_auto_reload(
         self,
         notification: BalanceNotification,
@@ -876,21 +875,21 @@ class USDCPaymentService:
             if last_date == datetime.utcnow().date():
                 if notification.reload_count_today >= notification.auto_reload_max_daily:
                     return  # Daily limit reached
-        
+
         # Check if we can reload (not already loaded today)
         if notification.last_reloaded_at:
             last_reloaded = datetime.fromisoformat(notification.last_reloaded_at)
             if last_reloaded.date() == datetime.utcnow().date():
                 return  # Already reloaded today
-        
+
         # Execute reload (create payment intent from funding source)
         # This would typically come from a linked payment method
         reload_amount = notification.auto_reload_amount
-        
+
         # Update notification state
         notification.last_reloaded_at = datetime.utcnow().isoformat()
         notification.reload_count_today += 1
-        
+
         # Create record of reload
         reload_record = {
             "type": "auto_reload",
@@ -898,29 +897,29 @@ class USDCPaymentService:
             "amount": reload_amount,
             "timestamp": datetime.utcnow().isoformat(),
         }
-    
-    def _send_webhook(self, url: str, payload: Dict[str, Any]):
+
+    def _send_webhook(self, url: str, payload: dict[str, Any]):
         """Send webhook notification"""
         # In production, this would make an HTTP request
         # For now, just log it
         print(f"Webhook to {url}: {json.dumps(payload)}")
-    
-    def add_notification_callback(self, callback: Callable[[Dict[str, Any]], None]):
+
+    def add_notification_callback(self, callback: Callable[[dict[str, Any]], None]):
         """Add a notification callback function"""
         self._notification_callbacks.append(callback)
-    
+
     # ============ Multi-Signature Support ============
-    
+
     def set_multisig_config(self, config: MultisigConfig):
         """Set multi-signature configuration"""
         self.multisig_config = config
-    
+
     def collect_multisig_signature(
         self,
         intent_id: str,
         signer: str,
         signature: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Collect a signature for a multisig payment.
         
@@ -935,21 +934,21 @@ class USDCPaymentService:
         intent = self._payment_intents.get(intent_id)
         if not intent:
             return {"success": False, "error": "Intent not found"}
-        
+
         if not intent.metadata.get("requires_multisig"):
             return {"success": False, "error": "Multisig not required"}
-        
+
         # Verify signer is in required list
         required_signers = intent.metadata.get("signers_required", [])
         if signer not in required_signers:
             return {"success": False, "error": "Signer not authorized"}
-        
+
         # Collect signature
         if "signatures_collected" not in intent.metadata:
             intent.metadata["signatures_collected"] = {}
-        
+
         intent.metadata["signatures_collected"][signer] = signature
-        
+
         # Check if we have enough signatures
         sigs = intent.metadata["signatures_collected"]
         if len(sigs) >= self.multisig_config.required_count:
@@ -959,20 +958,20 @@ class USDCPaymentService:
                 "signatures_collected": len(sigs),
                 "message": "Multisig complete, payment can be executed",
             }
-        
+
         return {
             "success": True,
             "multisig_complete": False,
             "signatures_collected": len(sigs),
             "signatures_needed": self.multisig_config.required_count - len(sigs),
         }
-    
+
     def initiate_recovery(
         self,
         intent_id: str,
         recovery_wallet: str,
         reason: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Initiate recovery for a stuck payment.
         
@@ -986,11 +985,11 @@ class USDCPaymentService:
         """
         if not self.multisig_config.recovery_signer:
             return {"success": False, "error": "Recovery not configured"}
-        
+
         intent = self._payment_intents.get(intent_id)
         if not intent:
             return {"success": False, "error": "Intent not found"}
-        
+
         # Log recovery attempt
         recovery_record = {
             "intent_id": intent_id,
@@ -999,29 +998,29 @@ class USDCPaymentService:
             "timestamp": datetime.utcnow().isoformat(),
             "status": "pending",
         }
-        
+
         return {
             "success": True,
             "recovery_initiated": True,
             "recovery_record": recovery_record,
             "message": "Recovery initiated, awaiting verification",
         }
-    
+
     # ============ Export ============
-    
-    def export_payments_json(self, wallet_address: Optional[str] = None) -> str:
+
+    def export_payments_json(self, wallet_address: str | None = None) -> str:
         """Export payments as JSON"""
         if wallet_address:
             payments = self.get_payment_history(wallet_address)
         else:
             payments = self._payment_history
-        
+
         return json.dumps(
             [p.to_dict() for p in payments],
             indent=2,
         )
-    
-    def export_escrow_payments_json(self, wallet_address: Optional[str] = None) -> str:
+
+    def export_escrow_payments_json(self, wallet_address: str | None = None) -> str:
         """Export escrow payments as JSON"""
         if wallet_address:
             escrows = [
@@ -1030,7 +1029,7 @@ class USDCPaymentService:
             ]
         else:
             escrows = list(self._escrow_payments.values())
-        
+
         return json.dumps(
             [e.to_dict() for e in escrows],
             indent=2,
@@ -1042,7 +1041,7 @@ class USDCPaymentService:
 def get_usdc_payment_service(
     network: str = "devnet",
     multisig_threshold_usd: float = 1000.0,
-    recovery_wallet: Optional[str] = None,
+    recovery_wallet: str | None = None,
 ) -> USDCPaymentService:
     """
     Get a configured USDC Payment Service.
@@ -1056,14 +1055,14 @@ def get_usdc_payment_service(
         Configured USDCPaymentService
     """
     usdc_client = USDCClient(network=network)
-    
+
     multisig_config = MultisigConfig(
         threshold_usd=multisig_threshold_usd,
         required_signers=[],
         required_count=2,
         recovery_signer=recovery_wallet,
     )
-    
+
     return USDCPaymentService(
         network=network,
         usdc_client=usdc_client,

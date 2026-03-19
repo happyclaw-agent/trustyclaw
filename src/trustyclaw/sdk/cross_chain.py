@@ -5,13 +5,11 @@ Provides cross-chain USDC bridging capabilities using Wormhole.
 Supports bridging between Solana, Ethereum, Polygon, and Arbitrum.
 """
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import Optional, Dict, Any
-from datetime import datetime
-import os
 import hashlib
-import hmac
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+
 
 class Chain(Enum):
     """Supported blockchain networks"""
@@ -43,10 +41,10 @@ class BridgeTransaction:
     amount: int  # In USDC decimals (6)
     status: BridgeStatus
     timestamp: datetime
-    wormhole_vaa: Optional[str] = None
-    explorer_url: Optional[str] = None
-    error_message: Optional[str] = None
-    
+    wormhole_vaa: str | None = None
+    explorer_url: str | None = None
+    error_message: str | None = None
+
     def __post_init__(self):
         """Generate explorer URL based on chain"""
         if self.source_chain == Chain.SOLANA:
@@ -92,7 +90,7 @@ class CrossChainBridge:
         # Check status
         status = bridge.get_bridge_status(tx.transaction_id)
     """
-    
+
     # Wormhole contract addresses (devnet/testnet)
     WORMHOLE_CONTRACTS = {
         Chain.SOLANA: "3KmkA7hvqG2wKkWUGz1BySioUywvcmdVJxy9SuTqwBqx",
@@ -100,7 +98,7 @@ class CrossChainBridge:
         Chain.POLYGON: "0xWormholeContract",
         Chain.ARBITRUM: "0xWormholeContract",
     }
-    
+
     # USDC token addresses
     USDC_CONTRACTS = {
         Chain.SOLANA: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -108,7 +106,7 @@ class CrossChainBridge:
         Chain.POLYGON: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
         Chain.ARBITRUM: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     }
-    
+
     def __init__(self, network: str = "devnet"):
         """
         Initialize cross-chain bridge.
@@ -117,8 +115,8 @@ class CrossChainBridge:
             network: Network mode ('devnet', 'testnet', 'mainnet')
         """
         self.network = network
-        self._pending_transactions: Dict[str, BridgeTransaction] = {}
-        
+        self._pending_transactions: dict[str, BridgeTransaction] = {}
+
         # For mainnet, use real Wormhole contracts
         if network == "mainnet":
             self.WORMHOLE_CONTRACTS = {
@@ -133,17 +131,17 @@ class CrossChainBridge:
                 Chain.POLYGON: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
                 Chain.ARBITRUM: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
             }
-    
+
     def _generate_transaction_id(self, source: str, dest: str, amount: int) -> str:
         """Generate unique transaction ID"""
         data = f"{source}:{dest}:{amount}:{datetime.utcnow().isoformat()}"
         return hashlib.sha256(data.encode()).hexdigest()[:64]
-    
+
     def _validate_chain(self, chain: Chain) -> None:
         """Validate chain is supported"""
         if chain not in self.WORMHOLE_CONTRACTS:
             raise BridgeError(f"Unsupported chain: {chain}")
-    
+
     def _validate_amount(self, amount: int) -> None:
         """Validate bridge amount"""
         if amount <= 0:
@@ -152,7 +150,7 @@ class CrossChainBridge:
             raise BridgeError("Minimum bridge amount is 1 USDC")
         if amount > 10_000_000_000:  # Maximum 10,000 USDC
             raise BridgeError("Maximum bridge amount is 10,000 USDC")
-    
+
     def get_quote(
         self,
         source_chain: Chain,
@@ -173,13 +171,13 @@ class CrossChainBridge:
         self._validate_chain(source_chain)
         self._validate_chain(destination_chain)
         self._validate_amount(amount)
-        
+
         # Calculate fees (0.1% for mainnet, 0% for devnet)
         if self.network == "mainnet":
             fees = int(amount * 0.001)
         else:
             fees = 0
-        
+
         # Estimate time based on chains
         if source_chain == Chain.SOLANA or destination_chain == Chain.SOLANA:
             estimated_time = 300  # 5 minutes
@@ -187,7 +185,7 @@ class CrossChainBridge:
             estimated_time = 600  # 10 minutes
         else:
             estimated_time = 900  # 15 minutes
-        
+
         return BridgeQuote(
             source_chain=source_chain,
             destination_chain=destination_chain,
@@ -196,7 +194,7 @@ class CrossChainBridge:
             estimated_time=estimated_time,
             destination_amount=amount - fees,
         )
-    
+
     def bridge_usdc_to_ethereum(
         self,
         amount: int,
@@ -221,7 +219,7 @@ class CrossChainBridge:
             source_address=solana_wallet,
             destination_address=ethereum_address,
         )
-    
+
     def bridge_usdc_to_solana(
         self,
         amount: int,
@@ -246,7 +244,7 @@ class CrossChainBridge:
             source_address=ethereum_wallet,
             destination_address=solana_address,
         )
-    
+
     def bridge_usdc_to_polygon(
         self,
         amount: int,
@@ -273,7 +271,7 @@ class CrossChainBridge:
             source_address=source_wallet,
             destination_address=polygon_address,
         )
-    
+
     def bridge_usdc_to_arbitrum(
         self,
         amount: int,
@@ -300,7 +298,7 @@ class CrossChainBridge:
             source_address=source_wallet,
             destination_address=arbitrum_address,
         )
-    
+
     def _execute_bridge(
         self,
         source_chain: Chain,
@@ -325,12 +323,12 @@ class CrossChainBridge:
         self._validate_chain(source_chain)
         self._validate_chain(destination_chain)
         self._validate_amount(amount)
-        
+
         # Generate transaction ID
         tx_id = self._generate_transaction_id(
             source_address, destination_address, amount
         )
-        
+
         # In devnet/testnet, simulate successful bridge
         if self.network != "mainnet":
             tx = BridgeTransaction(
@@ -344,14 +342,14 @@ class CrossChainBridge:
                 timestamp=datetime.utcnow(),
                 wormhole_vaa=f"vaa_{tx_id[:32]}",
             )
-            
+
             # Simulate completion
             # Simulate completion after short delay
             tx.status = BridgeStatus.COMPLETED
-            
+
             self._pending_transactions[tx_id] = tx
             return tx
-        
+
         # Mainnet: Would interact with real Wormhole contracts
         # This is a placeholder for actual implementation
         tx = BridgeTransaction(
@@ -364,10 +362,10 @@ class CrossChainBridge:
             status=BridgeStatus.PENDING,
             timestamp=datetime.utcnow(),
         )
-        
+
         self._pending_transactions[tx_id] = tx
         return tx
-    
+
     def get_bridge_status(
         self,
         transaction_id: str,
@@ -383,14 +381,14 @@ class CrossChainBridge:
         """
         if transaction_id in self._pending_transactions:
             return self._pending_transactions[transaction_id].status
-        
+
         # For demo purposes, return completed
         return BridgeStatus.COMPLETED
-    
+
     def get_bridge_transaction(
         self,
         transaction_id: str,
-    ) -> Optional[BridgeTransaction]:
+    ) -> BridgeTransaction | None:
         """
         Get full bridge transaction details.
         
@@ -401,7 +399,7 @@ class CrossChainBridge:
             BridgeTransaction or None if not found
         """
         return self._pending_transactions.get(transaction_id)
-    
+
     def cancel_bridge(
         self,
         transaction_id: str,
@@ -421,11 +419,11 @@ class CrossChainBridge:
                 tx.status = BridgeStatus.REFUNDED
                 return True
         return False
-    
+
     def get_supported_chains(self) -> list[Chain]:
         """Get list of supported chains"""
         return list(self.WORMHOLE_CONTRACTS.keys())
-    
+
     def estimate_bridge_time(
         self,
         source_chain: Chain,
@@ -444,14 +442,14 @@ class CrossChainBridge:
         # Solana is fastest
         if source_chain == Chain.SOLANA or destination_chain == Chain.SOLANA:
             return 300  # 5 minutes
-        
+
         # ETH to L2s
         if source_chain == Chain.ETHEREUM:
             if destination_chain == Chain.POLYGON:
                 return 600  # 10 minutes
             elif destination_chain == Chain.ARBITRUM:
                 return 900  # 15 minutes
-        
+
         return 900  # Default 15 minutes
 
 def get_bridge_client(network: str = "devnet") -> CrossChainBridge:
