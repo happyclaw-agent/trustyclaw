@@ -8,8 +8,7 @@ and quality certifications for autonomous agents.
 from dataclasses import dataclass, field
 from datetime import datetime, time
 from enum import Enum
-from typing import Optional, List, Dict, Any
-import uuid
+from typing import Any
 
 
 class SkillCapability(Enum):
@@ -22,24 +21,24 @@ class SkillCapability(Enum):
     VIDEO_GENERATION = "video-generation"
     TRANSLATION = "translation"
     SUMMARIZATION = "summarization"
-    
+
     # Analysis capabilities
     DATA_ANALYSIS = "data-analysis"
     SENTIMENT_ANALYSIS = "sentiment-analysis"
     PATTERN_RECOGNITION = "pattern-recognition"
     PREDICTION = "prediction"
-    
+
     # Research capabilities
     WEB_SEARCH = "web-search"
     DOCUMENT_ANALYSIS = "document-analysis"
     FACT_CHECKING = "fact-checking"
-    
+
     # Specialized capabilities
     REASONING = "reasoning"
     PLANNING = "planning"
     CREATIVE_WRITING = "creative-writing"
     TECHNICAL_WRITING = "technical-writing"
-    
+
     # Autonomous capabilities
     SELF_IMPROVEMENT = "self-improvement"
     TASK_AUTONOMY = "task-autonomy"
@@ -77,11 +76,11 @@ class PricingConfig:
     """Pricing configuration for a skill"""
     model: PricingModel
     base_price: int  # Price in USDC lamports (1 USDC = 1,000,000 lamports)
-    min_price: Optional[int] = None  # For negotiation
-    max_price: Optional[int] = None  # For negotiation
-    token_limit: Optional[int] = None  # For per-token pricing
-    
-    def to_dict(self) -> Dict[str, Any]:
+    min_price: int | None = None  # For negotiation
+    max_price: int | None = None  # For negotiation
+    token_limit: int | None = None  # For per-token pricing
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "model": self.model.value,
             "base_price": self.base_price,
@@ -94,22 +93,22 @@ class PricingConfig:
 @dataclass
 class AvailabilitySchedule:
     """Weekly availability schedule for an agent"""
-    monday_start: Optional[time] = None
-    monday_end: Optional[time] = None
-    tuesday_start: Optional[time] = None
-    tuesday_end: Optional[time] = None
-    wednesday_start: Optional[time] = None
-    wednesday_end: Optional[time] = None
-    thursday_start: Optional[time] = None
-    thursday_end: Optional[time] = None
-    friday_start: Optional[time] = None
-    friday_end: Optional[time] = None
-    saturday_start: Optional[time] = None
-    saturday_end: Optional[time] = None
-    sunday_start: Optional[time] = None
-    sunday_end: Optional[time] = None
+    monday_start: time | None = None
+    monday_end: time | None = None
+    tuesday_start: time | None = None
+    tuesday_end: time | None = None
+    wednesday_start: time | None = None
+    wednesday_end: time | None = None
+    thursday_start: time | None = None
+    thursday_end: time | None = None
+    friday_start: time | None = None
+    friday_end: time | None = None
+    saturday_start: time | None = None
+    saturday_end: time | None = None
+    sunday_start: time | None = None
+    sunday_end: time | None = None
     timezone: str = "UTC"
-    
+
     def is_available_at(self, dt: datetime) -> bool:
         """Check if agent is available at a given datetime"""
         # Get the day and time
@@ -122,21 +121,21 @@ class AvailabilitySchedule:
             5: ("saturday_start", "saturday_end"),
             6: ("sunday_start", "sunday_end"),
         }
-        
+
         start_key, end_key = day_map.get(dt.weekday(), (None, None))
         if start_key is None:
             return False
-        
+
         start_time = getattr(self, start_key)
         end_time = getattr(self, end_key)
-        
+
         if start_time is None or end_time is None:
             return False
-        
+
         current_time = dt.time()
         return start_time <= current_time <= end_time
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "monday": {"start": str(self.monday_start) if self.monday_start else None,
                       "end": str(self.monday_end) if self.monday_end else None},
@@ -161,12 +160,12 @@ class QualityBadge:
     """Quality certification badge"""
     certification: QualityCertification
     issued_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
     issuer: str = "TrustyClaw"
     score: float = 0.0
     verified: bool = False
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "certification": self.certification.value,
             "issued_at": self.issued_at,
@@ -186,16 +185,16 @@ class SkillSpec:
     description: str
     pricing: PricingConfig
     estimated_duration_hours: float
-    availability: Optional[AvailabilitySchedule] = None
-    quality_badges: List[QualityBadge] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    examples: List[str] = field(default_factory=list)
-    requirements: List[str] = field(default_factory=list)
+    availability: AvailabilitySchedule | None = None
+    quality_badges: list[QualityBadge] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    examples: list[str] = field(default_factory=list)
+    requirements: list[str] = field(default_factory=list)
     rating: float = 0.0
     review_count: int = 0
     completed_tasks: int = 0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "capability": self.capability.value,
@@ -220,19 +219,19 @@ class AgentCapabilities:
     agent_address: str
     name: str
     bio: str
-    skills: List[SkillSpec]
-    certifications: List[QualityBadge]
+    skills: list[SkillSpec]
+    certifications: list[QualityBadge]
     auto_negotiation: bool = False
     auto_accept_mandates: bool = False
-    max_mandate_value: Optional[int] = None
-    preferred_mandate_duration_seconds: Optional[int] = None
-    languages: List[str] = field(default_factory=lambda: ["English"])
-    website: Optional[str] = None
-    avatar_url: Optional[str] = None
+    max_mandate_value: int | None = None
+    preferred_mandate_duration_seconds: int | None = None
+    languages: list[str] = field(default_factory=lambda: ["English"])
+    website: str | None = None
+    avatar_url: str | None = None
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_address": self.agent_address,
             "name": self.name,

@@ -6,12 +6,10 @@ Tests for Mandate, Discovery, and Reputation skills using actual Skill classes.
 
 import os
 
-import pytest
-
 
 def test_mandate_skill():
     """Test MandateSkill: create_mandate and get_mandate."""
-    from trustyclaw.skills.mandate import get_mandate_skill, MandateStatus
+    from trustyclaw.skills.mandate import MandateStatus, get_mandate_skill
 
     skill = get_mandate_skill(mock=True)
     m = skill.create_mandate(
@@ -79,8 +77,8 @@ def test_skill_files_exist():
 
 def test_getters_accept_mock():
     """Test that get_*_skill(mock=True) works (README API)."""
-    from trustyclaw.skills.mandate import get_mandate_skill
     from trustyclaw.skills.discovery import get_discovery_skill
+    from trustyclaw.skills.mandate import get_mandate_skill
     from trustyclaw.skills.reputation import get_reputation_skill
 
     get_mandate_skill(mock=True)

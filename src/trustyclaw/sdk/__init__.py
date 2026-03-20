@@ -32,3 +32,11 @@ __all__ = [
     "EscrowTerms",
     "create_escrow_terms",
 ]
+
+try:
+    from .keypair import WalletInfo as _KeypairWalletInfo
+except Exception:
+    pass
+else:
+    KeypairWalletInfo = _KeypairWalletInfo
+    __all__.append("KeypairWalletInfo")

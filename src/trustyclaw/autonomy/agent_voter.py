@@ -4,11 +4,10 @@ Autonomous Agent Voter for TrustyClaw
 Enables agents to autonomously vote on hackathon projects and submissions.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, List, Any
-from datetime import datetime
 import hashlib
-import json
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -23,8 +22,8 @@ class HackathonProject:
     votes: int = 0
     rating: float = 0.0
     submitted_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "project_id": self.project_id,
             "name": self.name,
@@ -48,8 +47,8 @@ class VoteDecision:
     confidence: float
     reasoning: str
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "vote_id": self.vote_id,
             "project_id": self.project_id,
@@ -65,19 +64,19 @@ class AutonomousAgentVoter:
     """
     Autonomous agent that can vote on hackathon submissions.
     """
-    
+
     HACKATHON_TAG = "#USDCHackathon"
     SUBMISSION_TAG = "ProjectSubmission"
-    
+
     def __init__(self, agent_address: str, mock: bool = True):
         self.agent_address = agent_address
         self.mock = mock
-        self._projects: Dict[str, HackathonProject] = {}
-        self._votes: List[VoteDecision] = []
-        
+        self._projects: dict[str, HackathonProject] = {}
+        self._votes: list[VoteDecision] = []
+
         if mock:
             self._init_mock_projects()
-    
+
     def _init_mock_projects(self):
         """Initialize mock hackathon projects"""
         projects = [
@@ -112,31 +111,31 @@ class AutonomousAgentVoter:
                 rating=4.8,
             ),
         ]
-        
+
         for p in projects:
             self._projects[p.project_id] = p
-    
-    def discover_projects(self, track: str = None) -> List[HackathonProject]:
+
+    def discover_projects(self, track: str = None) -> list[HackathonProject]:
         """Discover hackathon projects"""
         projects = list(self._projects.values())
-        
+
         if track:
             projects = [p for p in projects if p.track == track]
-        
+
         return sorted(projects, key=lambda p: p.votes, reverse=True)
-    
-    def analyze_project(self, project: HackathonProject) -> Dict[str, Any]:
+
+    def analyze_project(self, project: HackathonProject) -> dict[str, Any]:
         """Analyze a project and return scoring."""
         quality_score = min(project.rating / 5.0, 1.0)
         innovation_score = 0.7
         completeness_score = 0.8
-        
+
         overall_score = (
             quality_score * 0.3 +
             innovation_score * 0.4 +
             completeness_score * 0.3
         )
-        
+
         return {
             "quality_score": quality_score,
             "innovation_score": innovation_score,
@@ -144,7 +143,7 @@ class AutonomousAgentVoter:
             "overall_score": overall_score,
             "recommendation": "upvote" if overall_score > 0.6 else "abstain",
         }
-    
+
     def vote_on_project(
         self,
         project_id: str,
@@ -154,12 +153,12 @@ class AutonomousAgentVoter:
         """Cast a vote on a project."""
         if project_id not in self._projects:
             raise ValueError(f"Project {project_id} not found")
-        
+
         project = self._projects[project_id]
         analysis = self.analyze_project(project)
-        
+
         vote_id = f"vote-{hashlib.md5(f'{project_id}{self.agent_address}'.encode()).hexdigest()[:8]}"
-        
+
         vote = VoteDecision(
             vote_id=vote_id,
             project_id=project_id,
@@ -168,23 +167,23 @@ class AutonomousAgentVoter:
             confidence=analysis["overall_score"],
             reasoning=reasoning or f"Overall score: {analysis['overall_score']:.2f}",
         )
-        
+
         self._votes.append(vote)
-        
+
         if vote_type == "upvote":
             project.votes += 1
         elif vote_type == "downvote":
             project.votes = max(0, project.votes - 1)
-        
+
         return vote
-    
-    def auto_vote_all(self, min_score: float = 0.5) -> List[VoteDecision]:
+
+    def auto_vote_all(self, min_score: float = 0.5) -> list[VoteDecision]:
         """Automatically vote on all projects above threshold."""
         cast_votes = []
-        
+
         for project in self._projects.values():
             analysis = self.analyze_project(project)
-            
+
             if analysis["overall_score"] >= min_score:
                 vote = self.vote_on_project(
                     project.project_id,
@@ -192,16 +191,16 @@ class AutonomousAgentVoter:
                     reasoning=f"Auto-vote: score {analysis['overall_score']:.2f}",
                 )
                 cast_votes.append(vote)
-        
+
         return cast_votes
-    
+
     def generate_submission_post(self) -> str:
         """Generate a Moltbook submission post"""
         project = self._projects.get("proj-001")
-        
+
         if not project:
             return ""
-        
+
         return f"""
 {self.HACKATHON_TAG} ProjectSubmission [{project.track}]
 
@@ -218,19 +217,19 @@ Repo: https://github.com/happyclaw-agent/trustyclaw
 
 Vote if you want autonomous agent skill rentals!
 """.strip()
-    
-    def get_voting_history(self) -> List[Dict[str, Any]]:
+
+    def get_voting_history(self) -> list[dict[str, Any]]:
         """Get all votes cast by this agent"""
         return [v.to_dict() for v in self._votes]
-    
-    def get_leaderboard(self, n: int = 10) -> List[Dict[str, Any]]:
+
+    def get_leaderboard(self, n: int = 10) -> list[dict[str, Any]]:
         """Get top projects by votes"""
         projects = sorted(
             self._projects.values(),
             key=lambda p: p.votes,
             reverse=True,
         )[:n]
-        
+
         return [p.to_dict() for p in projects]
 
 
@@ -247,22 +246,22 @@ if __name__ == "__main__":
         agent_address="GFeyFZLmvsw7aKHNoUUM84tCvgKf34ojbpKeKcuXDE5q",
         mock=True,
     )
-    
+
     print("=== Autonomous Agent Voter Demo ===\n")
-    
+
     print("Discovering projects...")
     projects = voter.discover_projects()
     for p in projects:
         print(f"  - {p.name}: {p.votes} votes ({p.track})")
-    
+
     print("\nAuto-voting on quality projects...")
     votes = voter.auto_vote_all(min_score=0.5)
     print(f"  Cast {len(votes)} votes")
-    
+
     print("\n=== Submission Post ===")
     post = voter.generate_submission_post()
     print(post)
-    
+
     print("\n=== Leaderboard ===")
     leaderboard = voter.get_leaderboard()
     for i, p in enumerate(leaderboard, 1):

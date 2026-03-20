@@ -4,13 +4,11 @@ USDC Token Integration for TrustyClaw
 Real SPL Token operations for USDC on Solana.
 """
 
-from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple, Union
-from enum import Enum
-import os
 import base64
-import time
-import hashlib
+import os
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
 try:
     from solana.rpc.api import Client as SolanaClient
@@ -45,7 +43,7 @@ class TokenAccount:
     owner: str
     balance: float
     decimals: int
-    
+
     @property
     def balance_raw(self) -> int:
         """Balance in raw units"""
@@ -60,7 +58,7 @@ class TransferResult:
     destination_account: str
     amount: float
     token: str = "USDC"
-    
+
     @property
     def explorer_url(self) -> str:
         """Solana Explorer URL"""
@@ -68,59 +66,59 @@ class TransferResult:
 
 class USDCClient:
     """USDC token operations for TrustyClaw"""
-    
+
     DEVNET_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
     MAINNET_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-    
+
     def __init__(
         self,
         network: str = "devnet",
-        keypair_path: Optional[str] = None,
+        keypair_path: str | None = None,
     ):
         self.network = network
         self.endpoint = f"https://api.{network}.solana.com"
         self.commitment = "confirmed"
-        
+
         if network == "devnet":
             self.mint = self.DEVNET_MINT
         else:
             self.mint = self.MAINNET_MINT
-        
+
         if HAS_SOLANA:
             self.client = SolanaClient(f"https://api.{network}.solana.com")
         else:
             self.client = None
-        
-        self._keypair: Optional[Any] = None
+
+        self._keypair: Any | None = None
         if keypair_path and os.path.exists(keypair_path) and HAS_SOLANA:
             self._load_keypair(keypair_path)
-    
+
     def _load_keypair(self, path: str) -> None:
         """Load keypair from file"""
         if not HAS_SOLANA:
             return
-            
+
         with open(path, 'rb') as f:
             keypair_data = f.read()
-        
+
         try:
             self._keypair = Keypair.from_bytes(keypair_data)
         except Exception:
             secret = base64.b64decode(keypair_data)
             self._keypair = Keypair.from_bytes(secret)
-    
+
     @property
-    def address(self) -> Optional[str]:
+    def address(self) -> str | None:
         """Get loaded keypair address"""
         if self._keypair:
             return str(self._keypair.pubkey())
         return None
-    
+
     def get_balance(self, wallet_address: str) -> float:
         """Get USDC balance for a wallet"""
         if not self.client:
             return 0.0
-        
+
         try:
             resp = self.client.get_token_accounts_by_owner(
                 wallet_address,
@@ -128,7 +126,7 @@ class USDCClient:
                 encoding="jsonParsed",
                 commitment=self.commitment,
             )
-            
+
             if resp.value and len(resp.value) > 0:
                 account_data = resp.value[0].account.data
                 if isinstance(account_data, dict):
@@ -136,14 +134,14 @@ class USDCClient:
                     return float(info.get('tokenAmount', {}).get('uiAmount', 0))
         except:
             pass
-        
+
         return 0.0
-    
-    def find_associated_token_account(self, wallet_address: str) -> Optional[str]:
+
+    def find_associated_token_account(self, wallet_address: str) -> str | None:
         """Find the associated token account for a wallet"""
         if not self.client:
             return None
-        
+
         try:
             resp = self.client.get_token_accounts_by_owner(
                 wallet_address,
@@ -151,14 +149,14 @@ class USDCClient:
                 encoding="jsonParsed",
                 commitment=self.commitment,
             )
-            
+
             if resp.value and len(resp.value) > 0:
                 return str(resp.value[0].pubkey)
         except:
             pass
-        
+
         return None
-    
+
     def transfer(
         self,
         from_wallet: str,
@@ -169,7 +167,7 @@ class USDCClient:
         # Mock mode - no real on-chain transfer
         source_account = "mock-usdc-source-" + from_wallet[:8]
         dest_account = "mock-usdc-dest-" + to_wallet[:8]
-        
+
         return TransferResult(
             signature=f"transfer-{source_account[:8]}-{dest_account[:8]}",
             status=TransferStatus.CONFIRMED,
@@ -177,15 +175,15 @@ class USDCClient:
             destination_account=dest_account,
             amount=amount,
         )
-    
+
     def decimals(self) -> int:
         """Get USDC decimals (always 6)"""
         return 6
-    
+
     def amount_to_raw(self, amount: float) -> int:
         """Convert UI amount to raw units"""
         return int(amount * (10 ** self.decimals()))
-    
+
     def raw_to_amount(self, raw: int) -> float:
         """Convert raw units to UI amount"""
         return raw / (10 ** self.decimals())
@@ -193,7 +191,7 @@ class USDCClient:
 def get_usdc_client(network: str = "devnet") -> USDCClient:
     """Get a USDC client"""
     keypair_path = os.environ.get("SOLANA_KEYPAIR_PATH")
-    
+
     return USDCClient(
         network=network,
         keypair_path=keypair_path,
