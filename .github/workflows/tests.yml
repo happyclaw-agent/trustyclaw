@@ -12,7 +12,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -31,7 +31,7 @@ jobs:
             src/trustyclaw/sdk/__init__.py \
             src/clawtrust
 
-      - name: Run lightweight unit lane
+      - name: Run representative unit lane with coverage gate
         working-directory: ${{ github.workspace }}
         env:
           PYTHONPATH: src
@@ -39,6 +39,12 @@ jobs:
           uv run pytest \
             src/tests/unit/test_simple.py \
             src/tests/unit/test_solana_defaults.py \
+            src/tests/unit/test_reputation_onchain.py \
+            --cov=trustyclaw.sdk.reputation_chain \
+            --cov=trustyclaw.sdk.reputation \
+            --cov=trustyclaw.sdk.solana \
+            --cov-report=term-missing \
+            --cov-fail-under=60 \
             -v --tb=short
 
       - name: Verify SDK imports
